@@ -13,7 +13,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 
-import Link from 'next/link';
 import { motion } from 'framer-motion';
 
 const features = [
@@ -129,7 +128,7 @@ export default function Landing() {
         <div className="max-w-6xl mx-auto px-4 sm:px-10 flex items-center justify-between h-14">
           <div className="flex items-center gap-4 font-bold text-lg tracking-tight text-lime-400">
             <UserGroupIcon className="h-6 w-6" />
-            <span className="font-mono">who's viewing me</span>
+            <span className="font-mono">who&apos;s viewing me</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-xs font-semibold">
             <a href="#features" className="hover:text-lime-400 transition px-2">Features</a>
@@ -150,11 +149,11 @@ export default function Landing() {
       <section className="max-w-2xl mx-auto px-3 sm:px-6 py-16 text-center flex flex-col items-center">
         <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-3xl sm:text-5xl font-extrabold mb-4 tracking-tight font-mono">
           <span className="inline-block w-full px-4 py-2 rounded border-2 border-lime-400 bg-[#18181b] text-lime-400">
-            See Who's On Your Site — Right Now
+            See Who&apos;s On Your Site — Right Now
           </span>
         </motion.h1>
         <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2, duration: 0.7 }} className="text-base sm:text-lg text-lime-300 mb-8 font-mono">
-          Realtime, privacy-first analytics for devs. Know who's visiting, where they came from, and what they're doing — instantly.
+          Realtime, privacy-first analytics for devs. Know who&apos;s visiting, where they came from, and what they&apos;re doing — instantly.
         </motion.p>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.7 }} className="flex flex-col sm:flex-row gap-3 justify-center mb-6 w-full">
           <a href="#pricing" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition flex items-center gap-2 justify-center">
@@ -294,7 +293,7 @@ export default function Landing() {
             <a href="/privacy" className="hover:text-green-400 transition">Privacy</a>
             <a href="/terms" className="hover:text-green-400 transition">Terms</a>
           </div>
-          <div className="text-neutral-500">© 2025 Who's Viewing Me</div>
+          <div className="text-neutral-500">© 2025 Who&apos;s Viewing Me</div>
         </div>
       </footer>
     </div>
