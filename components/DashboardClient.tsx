@@ -1,4 +1,4 @@
-'use client'
+ 'use client'
 
 import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
@@ -11,7 +11,9 @@ import {
   ArrowRightOnRectangleIcon,
   GlobeAltIcon,
   LinkIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  Bars3Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline'
 
 interface DashboardClientProps {
@@ -64,6 +66,9 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   const [newProjectName, setNewProjectName] = useState('')
   const [loading, setLoading] = useState(true)
   const [realtimeConnected, setRealtimeConnected] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmationName, setDeleteConfirmationName] = useState('')
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const eventSourceRef = useRef<EventSource | null>(null)
 
   const fetchProjects = useCallback(async () => {
@@ -195,6 +200,28 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
     }
   }
 
+  const deleteProject = async () => {
+    if (!selectedProject || selectedProject.name !== deleteConfirmationName) {
+      // Maybe show an error toast here
+      console.error('Confirmation name does not match')
+      return
+    }
+
+    try {
+      await fetch(`/api/project/${selectedProject.id}`, { method: 'DELETE' })
+      
+      // Reset state and fetch new project list
+      setDeleteConfirmationName('')
+      setShowDeleteModal(false)
+      setSelectedProject(null) // This will trigger a re-fetch in useEffect
+      await fetchProjects()
+
+    } catch (error) {
+      console.error('Error deleting project:', error)
+      // Maybe show an error toast here
+    }
+  }
+
   const getTrackingScript = (projectId: string) => {
     // Use environment variable for production, fallback to current origin
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
@@ -242,19 +269,93 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#18181b] text-neutral-100 flex items-center justify-center">
-        <div className="text-lime-400 font-mono">Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-400 mx-auto mb-4"></div>
+          <div className="text-lime-400 font-mono text-lg">Loading your dashboard...</div>
+          <div className="text-neutral-500 font-mono text-sm mt-2">Setting up real-time connections</div>
+        </div>
       </div>
+    )
+  }
+
+  // Show loading state when no projects exist yet
+  if (projects.length === 0) {
+  return (
+      <>
+        <div className="min-h-screen bg-[#18181b] text-neutral-100 flex items-center justify-center">
+          <div className="text-center max-w-md mx-auto px-4">
+            <div className="animate-pulse">
+              <div className="h-16 w-16 bg-lime-400/20 rounded-full mx-auto mb-6 flex items-center justify-center">
+                <UserGroupIcon className="h-8 w-8 text-lime-400" />
+              </div>
+            </div>
+            <h2 className="text-2xl font-bold text-lime-400 font-mono mb-4">Welcome to WatchDog! 🐕</h2>
+            <p className="text-neutral-400 font-mono mb-6">
+              Create your first project to start tracking visitors in real-time. It only takes a few seconds to set up.
+            </p>
+            <button
+              onClick={() => setShowNewProjectModal(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono font-bold mx-auto"
+            >
+              <PlusIcon className="h-5 w-5" />
+              Create Your First Project
+            </button>
+          </div>
+        </div>
+
+        {/* New Project Modal */}
+        {showNewProjectModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800 w-96">
+              <h3 className="text-xl font-bold text-green-400 mb-4 font-mono">Create New Project</h3>
+              <input
+                type="text"
+                placeholder="Project name"
+                value={newProjectName}
+                onChange={(e) => setNewProjectName(e.target.value)}
+                className="w-full bg-[#18181b] border border-neutral-700 rounded px-3 py-2 text-lime-400 font-mono mb-4"
+                onKeyPress={(e) => e.key === 'Enter' && createProject()}
+              />
+              <div className="flex gap-3">
+                <button
+                  onClick={createProject}
+                  className="flex-1 px-4 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => {
+                    setShowNewProjectModal(false)
+                    setNewProjectName('')
+                  }}
+                  className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 rounded hover:bg-neutral-600 transition font-mono"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     )
   }
 
   return (
     <div className="min-h-screen bg-[#18181b] text-neutral-100 flex">
       {/* Sidebar */}
-      <div className="w-64 bg-[#23272e] border-r border-neutral-800">
+      <div className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#23272e] border-r border-neutral-800 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition-transform duration-300 ease-in-out`}>
         <div className="p-6">
-          <div className="flex items-center gap-2 mb-8">
-            <UserGroupIcon className="h-6 w-6 text-lime-400" />
-            <span className="font-bold text-lg text-lime-400 font-mono">who&apos;s viewing me</span>
+          <div className="flex items-center justify-between gap-2 mb-8">
+            <div className="flex items-center gap-2">
+              <UserGroupIcon className="h-6 w-6 text-lime-400" />
+              <span className="font-bold text-lg text-lime-400 font-mono">Watch Dog 🐕</span>
+            </div>
+            <button
+              onClick={() => setIsSidebarOpen(false)}
+              className="md:hidden text-neutral-400 hover:text-white"
+            >
+              <XMarkIcon className="h-6 w-6" />
+            </button>
           </div>
           
           <nav className="space-y-2">
@@ -309,11 +410,17 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col md:ml-0">
         {/* Top Bar */}
         <div className="bg-[#23272e] border-b border-neutral-800 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="md:hidden text-neutral-400 hover:text-white"
+              >
+                <Bars3Icon className="h-6 w-6" />
+              </button>
               <select
                 value={selectedProject?.id || ''}
                 onChange={(e) => {
@@ -333,15 +440,15 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 className="flex items-center gap-2 px-3 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono text-sm"
               >
                 <PlusIcon className="h-4 w-4" />
-                New Project
+                <span className="hidden sm:inline">New Project</span>
               </button>
             </div>
             
             {/* Real-time connection indicator */}
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-green-400' : 'bg-yellow-400 animate-pulse'}`}></div>
               <span className="text-xs text-neutral-400 font-mono">
-                {realtimeConnected ? 'Live' : 'Offline'}
+                {realtimeConnected ? 'Live' : 'Connecting...'}
               </span>
             </div>
           </div>
@@ -559,35 +666,55 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                   </div>
                 </div>
               </div>
+
+              <div className="bg-red-900/20 p-6 rounded-lg border border-red-500/30">
+                <h3 className="text-red-400 font-semibold mb-2 font-mono">Danger Zone</h3>
+                <p className="text-neutral-400 text-sm mb-4 font-mono">
+                  Deleting a project is irreversible. It will permanently remove the project and all associated event data.
+                </p>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition font-mono"
+                >
+                  Delete Project
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
 
-      {/* New Project Modal */}
-      {showNewProjectModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800 w-96">
-            <h3 className="text-xl font-bold text-green-400 mb-4 font-mono">Create New Project</h3>
+      {/* Delete Project Modal */}
+      {showDeleteModal && selectedProject && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-[#23272e] p-6 rounded-lg border border-red-500/50 w-full max-w-md">
+            <h3 className="text-xl font-bold text-red-400 mb-2 font-mono">Delete Project</h3>
+            <p className="text-neutral-400 mb-4 text-sm font-mono">
+              This action cannot be undone. This will permanently delete the <strong className="text-lime-400">{selectedProject.name}</strong> project and all of its associated data.
+            </p>
+            <p className="text-neutral-400 mb-4 text-sm font-mono">
+              Please type the project name to confirm:
+            </p>
             <input
               type="text"
-              placeholder="Project name"
-              value={newProjectName}
-              onChange={(e) => setNewProjectName(e.target.value)}
+              placeholder={selectedProject.name}
+              value={deleteConfirmationName}
+              onChange={(e) => setDeleteConfirmationName(e.target.value)}
               className="w-full bg-[#18181b] border border-neutral-700 rounded px-3 py-2 text-lime-400 font-mono mb-4"
-              onKeyPress={(e) => e.key === 'Enter' && createProject()}
+              onKeyPress={(e) => e.key === 'Enter' && deleteProject()}
             />
             <div className="flex gap-3">
               <button
-                onClick={createProject}
-                className="flex-1 px-4 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono"
+                onClick={deleteProject}
+                disabled={deleteConfirmationName !== selectedProject.name}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded transition font-mono disabled:bg-red-500/30 disabled:cursor-not-allowed"
               >
-                Create
+                Delete this project
               </button>
               <button
                 onClick={() => {
-                  setShowNewProjectModal(false)
-                  setNewProjectName('')
+                  setShowDeleteModal(false)
+                  setDeleteConfirmationName('')
                 }}
                 className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 rounded hover:bg-neutral-600 transition font-mono"
               >
@@ -601,4 +728,4 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   )
 }
 
-export default DashboardClient 
+export default DashboardClient

@@ -1,15 +1,16 @@
 "use client"
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   CheckCircleIcon,
   ChartBarIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
-  UserGroupIcon,
   CodeBracketIcon,
   CpuChipIcon,
   EyeIcon,
-  ArrowRightEndOnRectangleIcon
+  ArrowRightEndOnRectangleIcon,
+  Bars3Icon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { Session } from 'next-auth';
 import { motion } from 'framer-motion';
@@ -51,52 +52,6 @@ const features = [
   },
 ];
 
-const pricing = [
-  {
-    name: 'Free',
-    price: '$0',
-    period: '/mo',
-    features: [
-      '1 project',
-      '10K events/month',
-      'Live feed',
-      'Basic country/referrer stats',
-      '1 month data retention',
-      'Community support',
-    ],
-    highlight: false,
-  },
-  {
-    name: 'Pro',
-    price: '$9',
-    period: '/mo',
-    features: [
-      '3 projects',
-      '100K events/month',
-      'All Free features',
-      'Advanced filtering',
-      'API access',
-      '6 months data retention',
-      'Email support',
-    ],
-    highlight: true,
-  },
-  {
-    name: 'Unlimited',
-    price: '$29',
-    period: '/mo',
-    features: [
-      'Unlimited projects',
-      'Unlimited events',
-      'All Pro features',
-      'Priority support',
-      'Custom integrations',
-      '1 year data retention',
-    ],
-    highlight: false,
-  },
-];
-
 const codeExample = `\n<script src=\"https://cdn.whosviewing.me/track.js\" data-site=\"YOUR_SITE_ID\"></script>\n`;
 
 const testimonials = [
@@ -124,20 +79,20 @@ const testimonials = [
 ];
 
 export default function Landing({ session }: LandingProps) {
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
   return (
     <div className="bg-[#18181b] text-neutral-100 min-h-screen font-mono">
       {/* Navbar */}
       <nav className="w-full border-b border-neutral-800 sticky top-0 z-30 bg-[#18181b]/90 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 sm:px-10 flex items-center justify-between h-14">
           <div className="flex items-center gap-4 font-bold text-lg tracking-tight text-lime-400">
-            <UserGroupIcon className="h-6 w-6" />
-            <span className="font-mono">who&apos;s viewing me</span>
+            <span className="font-mono">WatchDog 🐕</span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-xs font-semibold">
             <a href="#features" className="hover:text-lime-400 transition px-2">Features</a>
             <a href="#how" className="hover:text-lime-400 transition px-2">How It Works</a>
             <a href="#code" className="hover:text-lime-400 transition px-2">Code</a>
-            <a href="#pricing" className="hover:text-lime-400 transition px-2">Pricing</a>
             <a href="#testimonials" className="hover:text-lime-400 transition px-2">Devs</a>
             {session?.user ? (
               <a href="/dashboard" className="hover:text-lime-400 transition flex items-center gap-2 px-3 py-1 border border-lime-400 rounded bg-[#18181b]">
@@ -148,18 +103,48 @@ export default function Landing({ session }: LandingProps) {
                 <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Login
               </a>
             )}
-            <a href="#pricing" className="ml-4 px-5 py-2 rounded bg-lime-400 text-[#18181b] hover:bg-lime-300 transition font-bold shadow-sm">Get Started</a>
+            <a href="/auth" className="ml-4 px-5 py-2 rounded bg-lime-400 text-[#18181b] hover:bg-lime-300 transition font-bold shadow-sm">Get Started</a>
           </div>
           <div className="md:hidden">
-            {/* Mobile menu could go here */}
+            <button onClick={() => setIsMobileMenuOpen(true)} className="text-neutral-300">
+              <Bars3Icon className="h-6 w-6" />
+            </button>
           </div>
         </div>
       </nav>
 
+      {/* Mobile Menu */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 bg-[#18181b] md:hidden">
+          <div className="flex justify-between items-center p-4 border-b border-neutral-800">
+            <span className="font-mono font-bold text-lg text-lime-400">WatchDog 🐕</span>
+            <button onClick={() => setIsMobileMenuOpen(false)} className="text-neutral-300">
+              <XMarkIcon className="h-6 w-6" />
+            </button>
+          </div>
+          <div className="flex flex-col items-center justify-center h-[calc(100vh-60px)] gap-6 text-lg">
+            <a href="#features" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Features</a>
+            <a href="#how" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">How It Works</a>
+            <a href="#code" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Code</a>
+            <a href="#testimonials" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Devs</a>
+            <div className="w-4/5 border-t border-neutral-800 my-4"></div>
+            {session?.user ? (
+              <a href="/dashboard" className="w-4/5 text-center px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold shadow">
+                Go to Dashboard
+              </a>
+            ) : (
+              <a href="/auth" className="w-4/5 text-center px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold shadow">
+                Get Started Free
+              </a>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Hero Section */}
       <section className="max-w-2xl mx-auto px-3 sm:px-6 py-16 text-center flex flex-col items-center">
         <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }} className="text-3xl sm:text-5xl font-extrabold mb-4 tracking-tight font-mono">
-          <span className="inline-block w-full px-4 py-2 rounded border-2 border-lime-400 bg-[#18181b] text-lime-400">
+          <span className="inline-block w-full px-4 py-2 bg-gradient-to-r from-lime-400 via-teal-400 to-fuchsia-500 animate-text-gradient">
             See Who&apos;s On Your Site — Right Now
           </span>
         </motion.h1>
@@ -265,52 +250,18 @@ export default function Landing({ session }: LandingProps) {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="max-w-5xl mx-auto px-3 sm:px-6 py-12">
-        <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="text-xl sm:text-2xl font-bold text-center mb-8 text-green-400 font-mono">Pricing</motion.h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {pricing.map((plan, i) => (
-            <motion.div
-              key={plan.name}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.7 }}
-              className={`rounded-xl border shadow-sm p-6 flex flex-col items-center text-center transition-all font-mono ${plan.highlight ? 'border-green-400 bg-[#23272e] scale-105' : 'border-neutral-800 bg-[#18181b]'}`}
-            >
-              <div className="font-bold text-base mb-2 text-green-400">{plan.name}</div>
-              <div className="text-2xl font-extrabold mb-2 text-green-300">{plan.price}<span className="text-base font-medium text-neutral-500">{plan.period}</span></div>
-              <ul className="mb-6 space-y-1 text-left w-full max-w-xs mx-auto">
-                {plan.features.map((f, j) => (
-                  <li key={j} className="flex items-center gap-2 text-neutral-300 text-xs">
-                    <CheckCircleIcon className="h-4 w-4 text-green-400" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <a
-                href={plan.name === 'Free' ? (session?.user ? '/dashboard' : '/auth') : (session?.user ? '/dashboard' : '/auth')}
-                className={`mt-auto px-5 py-2 rounded font-bold transition shadow-sm w-full ${plan.highlight ? 'bg-green-400 text-[#18181b] hover:bg-green-300' : 'bg-[#23272e] text-green-400 border border-green-400 hover:bg-green-400 hover:text-[#18181b]'}`}
-              >
-                {plan.name === 'Free' ? (session?.user ? 'Go to Dashboard' : 'Get Started') : (session?.user ? 'Go to Dashboard' : 'Choose Plan')}
-              </a>
-            </motion.div>
-          ))}
-        </div>
-        <div className="mt-8 max-w-2xl mx-auto text-center text-neutral-500 text-xs font-mono">
-          <span className="font-semibold text-green-400">All plans</span> include privacy-first tracking, no cookies, and developer-friendly API access. Upgrade anytime. Cancel anytime.
-        </div>
-      </section>
-
       {/* Footer */}
       <footer className="border-t border-neutral-800 py-8 mt-12 text-xs font-mono">
         <div className="max-w-5xl mx-auto px-3 flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex gap-4 mb-2 md:mb-0">
-            <a href="https://twitter.com/whosviewingme" target="_blank" rel="noopener" className="hover:text-green-400 transition">Twitter</a>
-            <a href="https://github.com/whosviewingme" target="_blank" rel="noopener" className="hover:text-green-400 transition">GitHub</a>
-            <a href="/privacy" className="hover:text-green-400 transition">Privacy</a>
-            <a href="/terms" className="hover:text-green-400 transition">Terms</a>
+            <a href="https://x.com/nitin93937331" target="_blank" rel="noopener" className="hover:text-green-400 transition">Twitter</a>
+            <a href="https://github.com/NitinGurawaliya/" target="_blank" rel="noopener" className="hover:text-green-400 transition">GitHub</a>
           </div>
-          <div className="text-neutral-500">© 2025 Who&apos;s Viewing Me</div>
+          <div className="text-neutral-500 flex items-center gap-2">
+            <span>© 2025 Watch Dog</span>
+            <span>•</span>
+            <span>Made with ❤️ by <a href="https://x.com/nitin93937331" target="_blank" rel="noopener" className="text-green-400 hover:underline">Nitin</a></span>
+          </div>
         </div>
       </footer>
     </div>

@@ -24,3 +24,19 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@layer utilities {
+  .animate-text-gradient {
+    background-size: 200% 200%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: text-gradient 3s linear infinite alternate;
+  }
+}
+
+@keyframes text-gradient {
+  to {
+    background-position: 200% center;
+  }
+}
