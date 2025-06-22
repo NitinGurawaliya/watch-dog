@@ -53,6 +53,7 @@ export async function GET(
       select: {
         timestamp: true,
         ip: true,
+        sessionId: true,
       },
     });
 
@@ -67,7 +68,7 @@ export async function GET(
       dailyStats[dateKey] = 0;
     }
 
-    // Count unique visitors per day
+    // Count unique visitors per day using sessions (preferred) or IPs (fallback)
     const visitorsByDay: { [key: string]: Set<string> } = {};
     
     events.forEach(event => {
@@ -75,7 +76,9 @@ export async function GET(
       if (!visitorsByDay[dateKey]) {
         visitorsByDay[dateKey] = new Set();
       }
-      visitorsByDay[dateKey].add(event.ip);
+      // Use sessionId if available, otherwise fall back to IP
+      const visitorKey = event.sessionId || event.ip;
+      visitorsByDay[dateKey].add(visitorKey);
     });
 
     // Update daily stats

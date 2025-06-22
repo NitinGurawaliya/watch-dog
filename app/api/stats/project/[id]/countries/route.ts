@@ -53,10 +53,11 @@ export async function GET(
       select: {
         country: true,
         ip: true,
+        sessionId: true,
       },
     });
 
-    // Count unique visitors by country
+    // Count unique visitors by country using sessions (preferred) or IPs (fallback)
     const countryStats: { [key: string]: Set<string> } = {};
     
     events.forEach(event => {
@@ -64,7 +65,9 @@ export async function GET(
       if (!countryStats[country]) {
         countryStats[country] = new Set();
       }
-      countryStats[country].add(event.ip);
+      // Use sessionId if available, otherwise fall back to IP
+      const visitorKey = event.sessionId || event.ip;
+      countryStats[country].add(visitorKey);
     });
 
     // Convert to array format for charts

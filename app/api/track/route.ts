@@ -6,6 +6,7 @@ function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
   const realIP = request.headers.get('x-real-ip');
   const cfConnectingIP = request.headers.get('cf-connecting-ip');
+  const xClientIP = request.headers.get('x-client-ip');
   
   if (forwarded) {
     return forwarded.split(',')[0].trim();
@@ -16,26 +17,78 @@ function getClientIP(request: NextRequest): string {
   if (cfConnectingIP) {
     return cfConnectingIP;
   }
+  if (xClientIP) {
+    return xClientIP;
+  }
   
   return 'Unknown';
 }
 
-// Simple country detection from headers (Cloudflare)
+// Enhanced country detection from headers
 function getCountry(request: NextRequest): string {
+  // Try various headers that might contain country information
   const cfCountry = request.headers.get('cf-ipcountry');
+  const xCountry = request.headers.get('x-country');
+  const xGeoCountry = request.headers.get('x-geo-country');
+  const xVercelCountry = request.headers.get('x-vercel-ip-country');
+  
   if (cfCountry && cfCountry !== 'XX') {
     return cfCountry;
   }
+  if (xCountry) {
+    return xCountry;
+  }
+  if (xGeoCountry) {
+    return xGeoCountry;
+  }
+  if (xVercelCountry) {
+    return xVercelCountry;
+  }
+  
   return 'Unknown';
 }
 
-// Simple city detection from headers (Cloudflare)
+// Enhanced city detection from headers
 function getCity(request: NextRequest): string {
   const cfCity = request.headers.get('cf-ipcity');
+  const xCity = request.headers.get('x-city');
+  const xGeoCity = request.headers.get('x-geo-city');
+  
   if (cfCity) {
     return cfCity;
   }
+  if (xCity) {
+    return xCity;
+  }
+  if (xGeoCity) {
+    return xGeoCity;
+  }
+  
   return 'Unknown';
+}
+
+// Fallback IP geolocation using a free service
+async function getLocationFromIP(ip: string): Promise<{ country: string; city: string }> {
+  try {
+    // Skip if IP is localhost or private
+    if (ip === 'Unknown' || ip.startsWith('127.') || ip.startsWith('192.168.') || ip.startsWith('10.') || ip.startsWith('172.')) {
+      return { country: 'Unknown', city: 'Unknown' };
+    }
+    
+    const response = await fetch(`http://ip-api.com/json/${ip}?fields=country,city`);
+    const data = await response.json();
+    
+    if (data.status === 'success') {
+      return {
+        country: data.country || 'Unknown',
+        city: data.city || 'Unknown'
+      };
+    }
+  } catch (error) {
+    console.debug('IP geolocation failed:', error);
+  }
+  
+  return { country: 'Unknown', city: 'Unknown' };
 }
 
 // CORS headers to allow requests from any origin
@@ -56,7 +109,7 @@ export async function OPTIONS() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { projectId, pageUrl, referrer, userAgent } = body;
+    const { projectId, pageUrl, referrer, userAgent, sessionId } = body;
 
     // Validate required fields
     if (!projectId || !pageUrl) {
@@ -80,13 +133,73 @@ export async function POST(request: NextRequest) {
 
     // Detect IP and location from headers
     const ip = getClientIP(request);
-    const country = getCountry(request);
-    const city = getCity(request);
+    let country = getCountry(request);
+    let city = getCity(request);
 
-    // Create event
+    // Debug logging for development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Tracking Debug Info:', {
+        ip,
+        country,
+        city,
+        headers: {
+          'x-forwarded-for': request.headers.get('x-forwarded-for'),
+          'x-real-ip': request.headers.get('x-real-ip'),
+          'cf-connecting-ip': request.headers.get('cf-connecting-ip'),
+          'cf-ipcountry': request.headers.get('cf-ipcountry'),
+          'x-vercel-ip-country': request.headers.get('x-vercel-ip-country'),
+          'x-country': request.headers.get('x-country'),
+          'x-geo-country': request.headers.get('x-geo-country'),
+        }
+      });
+    }
+
+    // If we couldn't get location from headers, try IP geolocation
+    if (country === 'Unknown' && ip !== 'Unknown') {
+      const location = await getLocationFromIP(ip);
+      country = location.country;
+      city = location.city;
+      
+      if (process.env.NODE_ENV === 'development') {
+        console.log('IP Geolocation Result:', { ip, location });
+      }
+    }
+
+    // Check for recent duplicate events (within last 5 minutes)
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    
+    if (sessionId) {
+      const existingEvent = await prisma.event.findFirst({
+        where: {
+          projectId,
+          sessionId,
+          timestamp: {
+            gte: fiveMinutesAgo,
+          },
+        },
+      });
+
+      if (existingEvent) {
+        // Update the existing event instead of creating a new one
+        const updatedEvent = await prisma.event.update({
+          where: { id: existingEvent.id },
+          data: {
+            pageUrl,
+            referrer: referrer || '',
+            userAgent: userAgent || '',
+            timestamp: new Date(), // Update timestamp to show recent activity
+          },
+        });
+
+        return NextResponse.json({ success: true, eventId: updatedEvent.id, updated: true }, { headers: corsHeaders });
+      }
+    }
+
+    // Create new event
     const event = await prisma.event.create({
       data: {
         projectId,
+        sessionId: sessionId || '',
         pageUrl,
         referrer: referrer || '',
         userAgent: userAgent || '',
@@ -96,7 +209,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true, eventId: event.id }, { headers: corsHeaders });
+    return NextResponse.json({ success: true, eventId: event.id, updated: false }, { headers: corsHeaders });
   } catch (error) {
     console.error('Tracking error:', error);
     return NextResponse.json(

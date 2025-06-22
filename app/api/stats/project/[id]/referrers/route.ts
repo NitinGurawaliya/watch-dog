@@ -53,10 +53,11 @@ export async function GET(
       select: {
         referrer: true,
         ip: true,
+        sessionId: true,
       },
     });
 
-    // Count unique visitors by referrer
+    // Count unique visitors by referrer using sessions (preferred) or IPs (fallback)
     const referrerStats: { [key: string]: Set<string> } = {};
     
     events.forEach(event => {
@@ -75,7 +76,9 @@ export async function GET(
       if (!referrerStats[referrer]) {
         referrerStats[referrer] = new Set();
       }
-      referrerStats[referrer].add(event.ip);
+      // Use sessionId if available, otherwise fall back to IP
+      const visitorKey = event.sessionId || event.ip;
+      referrerStats[referrer].add(visitorKey);
     });
 
     // Convert to array format for charts

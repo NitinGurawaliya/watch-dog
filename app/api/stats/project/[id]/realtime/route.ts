@@ -17,6 +17,7 @@ interface VisitorDetail {
   city: string | null;
   userAgent: string;
   timestamp: Date;
+  sessionId: string | null;
 }
 
 export async function GET(
@@ -63,16 +64,19 @@ export async function GET(
       orderBy: {
         timestamp: 'desc',
       },
-      take: 50, // Limit to last 50 events
+      take: 100, // Increased limit to get more data for deduplication
     });
 
-    // Group by unique visitors (simplified by IP for now)
+    // Group by unique sessions (preferred) or IPs (fallback)
     const uniqueVisitors = new Set();
     const visitorDetails: VisitorDetail[] = [];
 
     realtimeEvents.forEach(event => {
-      if (!uniqueVisitors.has(event.ip)) {
-        uniqueVisitors.add(event.ip);
+      // Use sessionId if available, otherwise fall back to IP
+      const visitorKey = event.sessionId || event.ip;
+      
+      if (!uniqueVisitors.has(visitorKey)) {
+        uniqueVisitors.add(visitorKey);
         visitorDetails.push({
           id: event.id,
           pageUrl: event.pageUrl,
@@ -81,6 +85,7 @@ export async function GET(
           city: event.city,
           userAgent: event.userAgent,
           timestamp: event.timestamp,
+          sessionId: event.sessionId,
         });
       }
     });
