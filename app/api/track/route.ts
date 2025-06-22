@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { broadcastUpdate } from '../realtime/route';
 
 // Simple IP detection from headers
 function getClientIP(request: NextRequest): string {
@@ -142,6 +143,8 @@ export async function POST(request: NextRequest) {
         ip,
         country,
         city,
+        pageUrl,
+        sessionId,
         headers: {
           'x-forwarded-for': request.headers.get('x-forwarded-for'),
           'x-real-ip': request.headers.get('x-real-ip'),
@@ -165,7 +168,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check for recent duplicate events (within last 5 minutes)
+    // Check for recent events from the same session
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
     
     if (sessionId) {
@@ -177,25 +180,60 @@ export async function POST(request: NextRequest) {
             gte: fiveMinutesAgo,
           },
         },
+        orderBy: {
+          timestamp: 'desc',
+        },
       });
 
       if (existingEvent) {
-        // Update the existing event instead of creating a new one
-        const updatedEvent = await prisma.event.update({
-          where: { id: existingEvent.id },
-          data: {
-            pageUrl,
-            referrer: referrer || '',
-            userAgent: userAgent || '',
-            timestamp: new Date(), // Update timestamp to show recent activity
-          },
-        });
+        // Check if this is a page change (different URL)
+        if (existingEvent.pageUrl === pageUrl) {
+          // Same page, update the existing event
+          const updatedEvent = await prisma.event.update({
+            where: { id: existingEvent.id },
+            data: {
+              referrer: referrer || '',
+              userAgent: userAgent || '',
+              timestamp: new Date(), // Update timestamp to show recent activity
+            },
+          });
 
-        return NextResponse.json({ success: true, eventId: updatedEvent.id, updated: true }, { headers: corsHeaders });
+          // Broadcast update for real-time updates
+          try {
+            await broadcastUpdate(projectId);
+          } catch (error) {
+            console.debug('Failed to broadcast update:', error);
+          }
+
+          return NextResponse.json({ success: true, eventId: updatedEvent.id, updated: true }, { headers: corsHeaders });
+        } else {
+          // Different page, create a new event to show navigation
+          const newEvent = await prisma.event.create({
+            data: {
+              projectId,
+              sessionId: sessionId || '',
+              pageUrl,
+              referrer: referrer || '',
+              userAgent: userAgent || '',
+              ip: ip,
+              country: country,
+              city: city,
+            },
+          });
+
+          // Broadcast update for real-time updates
+          try {
+            await broadcastUpdate(projectId);
+          } catch (error) {
+            console.debug('Failed to broadcast update:', error);
+          }
+
+          return NextResponse.json({ success: true, eventId: newEvent.id, updated: false, pageChange: true }, { headers: corsHeaders });
+        }
       }
     }
 
-    // Create new event
+    // Create new event (first visit or no session)
     const event = await prisma.event.create({
       data: {
         projectId,
@@ -208,6 +246,13 @@ export async function POST(request: NextRequest) {
         city: city,
       },
     });
+
+    // Broadcast update for real-time updates
+    try {
+      await broadcastUpdate(projectId);
+    } catch (error) {
+      console.debug('Failed to broadcast update:', error);
+    }
 
     return NextResponse.json({ success: true, eventId: event.id, updated: false }, { headers: corsHeaders });
   } catch (error) {

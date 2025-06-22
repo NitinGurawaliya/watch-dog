@@ -22,6 +22,7 @@
   // Session management to prevent duplicate tracking
   const sessionKey = `wvm_session_${siteId}`;
   const lastTrackKey = `wvm_last_track_${siteId}`;
+  const lastPageKey = `wvm_last_page_${siteId}`;
   
   // Check if we should track this visit
   function shouldTrack() {
@@ -55,6 +56,19 @@
     return true;
   }
   
+  // Check if page has changed
+  function hasPageChanged() {
+    const currentPage = window.location.href;
+    const lastPage = localStorage.getItem(lastPageKey);
+    
+    if (lastPage !== currentPage) {
+      localStorage.setItem(lastPageKey, currentPage);
+      return true;
+    }
+    
+    return false;
+  }
+  
   // Get visitor information
   function getVisitorInfo() {
     const sessionId = localStorage.getItem(sessionKey);
@@ -72,8 +86,8 @@
   
   // Send tracking data
   function track() {
-    // Only track if we should
-    if (!shouldTrack()) {
+    // Track if we should OR if the page has changed
+    if (!shouldTrack() && !hasPageChanged()) {
       return;
     }
     
@@ -112,6 +126,29 @@
     }
   });
   
-  // Don't track on beforeunload as it's unreliable and creates duplicates
+  // Track on popstate (browser back/forward)
+  window.addEventListener('popstate', function() {
+    // Small delay to ensure URL has updated
+    setTimeout(track, 100);
+  });
+  
+  // Track on pushstate/replacestate (programmatic navigation)
+  const originalPushState = history.pushState;
+  const originalReplaceState = history.replaceState;
+  
+  history.pushState = function() {
+    originalPushState.apply(this, arguments);
+    setTimeout(track, 100);
+  };
+  
+  history.replaceState = function() {
+    originalReplaceState.apply(this, arguments);
+    setTimeout(track, 100);
+  };
+  
+  // For SPAs, also listen to hash changes
+  window.addEventListener('hashchange', function() {
+    setTimeout(track, 100);
+  });
   
 })(); 

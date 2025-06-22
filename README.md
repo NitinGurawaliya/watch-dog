@@ -92,8 +92,8 @@ A real-time, privacy-first analytics platform for developers. See who's visiting
 
 ### Quick Test Setup
 1. **Start the development server**
-   ```bash
-   npm run dev
+```bash
+npm run dev
    ```
 
 2. **Create a test project**

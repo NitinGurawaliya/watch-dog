@@ -2,7 +2,7 @@
 
 import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { 
   ChartBarIcon, 
   EyeIcon, 
@@ -11,7 +11,9 @@ import {
   ArrowRightOnRectangleIcon,
   GlobeAltIcon,
   LinkIcon,
-  UserGroupIcon
+  UserGroupIcon,
+  ClipboardDocumentIcon,
+  CheckIcon
 } from '@heroicons/react/24/outline'
 
 interface DashboardClientProps {
@@ -63,6 +65,8 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false)
   const [newProjectName, setNewProjectName] = useState('')
   const [loading, setLoading] = useState(true)
+  const [realtimeConnected, setRealtimeConnected] = useState(false)
+  const eventSourceRef = useRef<EventSource | null>(null)
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -83,26 +87,69 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
     if (!selectedProject) return
 
     try {
-      const [realtimeRes, dailyRes, countriesRes, referrersRes] = await Promise.all([
-        fetch(`/api/stats/project/${selectedProject.id}/realtime`),
+      const [dailyRes, countriesRes, referrersRes] = await Promise.all([
         fetch(`/api/stats/project/${selectedProject.id}/7days`),
         fetch(`/api/stats/project/${selectedProject.id}/countries`),
         fetch(`/api/stats/project/${selectedProject.id}/referrers`)
       ])
 
-      const [realtimeData, dailyData, countriesData, referrersData] = await Promise.all([
-        realtimeRes.json(),
+      const [dailyData, countriesData, referrersData] = await Promise.all([
         dailyRes.json(),
         countriesRes.json(),
         referrersRes.json()
       ])
 
-      setRealtimeStats(realtimeData)
       setDailyStats(dailyData)
       setCountryStats(countriesData)
       setReferrerStats(referrersData)
     } catch (error) {
       console.error('Error fetching stats:', error)
+    }
+  }, [selectedProject])
+
+  // Set up real-time connection
+  const setupRealtimeConnection = useCallback(() => {
+    if (!selectedProject) return
+
+    // Close existing connection
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close()
+    }
+
+    // Create new SSE connection
+    const eventSource = new EventSource(`/api/realtime?projectId=${selectedProject.id}`)
+    eventSourceRef.current = eventSource
+
+    eventSource.onopen = () => {
+      console.log('Real-time connection established')
+      setRealtimeConnected(true)
+    }
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        
+        if (data.type === 'stats') {
+          setRealtimeStats({
+            count: data.count,
+            visitors: data.visitors
+          })
+        }
+      } catch (error) {
+        console.error('Error parsing SSE data:', error)
+      }
+    }
+
+    eventSource.onerror = (error) => {
+      console.error('SSE connection error:', error)
+      setRealtimeConnected(false)
+      eventSource.close()
+    }
+
+    // Cleanup function
+    return () => {
+      eventSource.close()
+      setRealtimeConnected(false)
     }
   }, [selectedProject])
 
@@ -113,10 +160,22 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   useEffect(() => {
     if (selectedProject) {
       fetchStats()
-      const interval = setInterval(fetchStats, 30000)
-      return () => clearInterval(interval)
+      const cleanup = setupRealtimeConnection()
+      
+      return () => {
+        if (cleanup) cleanup()
+      }
     }
-  }, [selectedProject, fetchStats])
+  }, [selectedProject, fetchStats, setupRealtimeConnection])
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close()
+      }
+    }
+  }, [])
 
   const createProject = async () => {
     if (!newProjectName.trim()) return
@@ -146,6 +205,40 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
+  }
+
+  // Function to extract page name from URL
+  const getPageName = (url: string) => {
+    try {
+      const urlObj = new URL(url)
+      const path = urlObj.pathname
+      
+      if (path === '/' || path === '') {
+        return 'Home'
+      }
+      
+      // Remove leading slash and get the last part
+      const parts = path.split('/').filter(part => part.length > 0)
+      if (parts.length === 0) {
+        return 'Home'
+      }
+      
+      // Get the last part and capitalize it
+      const lastPart = parts[parts.length - 1]
+      return lastPart.charAt(0).toUpperCase() + lastPart.slice(1).replace(/[-_]/g, ' ')
+    } catch {
+      return 'Unknown Page'
+    }
+  }
+
+  // Function to get domain from URL
+  const getDomain = (url: string) => {
+    try {
+      const urlObj = new URL(url)
+      return urlObj.hostname
+    } catch {
+      return 'Unknown'
+    }
   }
 
   if (loading) {
@@ -245,6 +338,14 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 New Project
               </button>
             </div>
+            
+            {/* Real-time connection indicator */}
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-green-400' : 'bg-red-400'}`}></div>
+              <span className="text-xs text-neutral-400 font-mono">
+                {realtimeConnected ? 'Live' : 'Offline'}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -256,7 +357,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <div className="flex items-center gap-3 mb-2">
-                    <EyeIcon className="h-6 w-6 text-green-400" />
+                    <EyeIcon className={`h-6 w-6 text-green-400 ${realtimeStats.count > 0 ? 'animate-pulse' : ''}`} />
                     <h3 className="text-green-400 font-semibold font-mono">Live Visitors</h3>
                   </div>
                   <p className="text-3xl font-bold text-lime-400">{realtimeStats.count}</p>
@@ -292,22 +393,27 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <h3 className="text-green-400 font-semibold mb-4 font-mono">7-Day Traffic</h3>
                   <div className="space-y-2">
-                    {dailyStats.map((day) => (
-                      <div key={day.date} className="flex items-center gap-3">
-                        <span className="text-xs text-neutral-400 font-mono w-16">
-                          {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                        <div className="flex-1 bg-neutral-800 rounded-full h-2">
-                          <div 
-                            className="bg-lime-400 h-2 rounded-full transition-all"
-                            style={{ width: `${Math.max(day.visitors * 10, 2)}%` }}
-                          />
+                    {dailyStats.map((day) => {
+                      const maxViews = Math.max(...dailyStats.map(d => d.visitors), 1);
+                      const percentage = (day.visitors / maxViews) * 100;
+
+                      return (
+                        <div key={day.date} className="flex items-center gap-3">
+                          <span className="text-xs text-neutral-400 font-mono w-16">
+                            {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                          <div className="flex-1 bg-neutral-800 rounded-full h-2 overflow-hidden">
+                            <div 
+                              className="bg-lime-400 h-2 rounded-full transition-all"
+                              style={{ width: `${percentage}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-lime-400 font-mono w-8 text-right">
+                            {day.visitors}
+                          </span>
                         </div>
-                        <span className="text-xs text-lime-400 font-mono w-8 text-right">
-                          {day.visitors}
-                        </span>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
 
@@ -365,20 +471,44 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                   <div className="space-y-3">
                     {realtimeStats.visitors.map((visitor) => (
                       <div key={visitor.id} className="bg-[#18181b] p-4 rounded border border-neutral-800">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm text-lime-400 font-mono">
-                            {visitor.country}, {visitor.city}
-                          </span>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                            <span className="text-sm text-lime-400 font-mono font-semibold">
+                              {visitor.country}, {visitor.city}
+                            </span>
+                          </div>
                           <span className="text-xs text-neutral-500 font-mono">
                             {new Date(visitor.timestamp).toLocaleTimeString()}
                           </span>
                         </div>
-                        <div className="text-sm text-neutral-300 font-mono mb-1">
-                          📄 {visitor.pageUrl}
+                        
+                        {/* Page Information */}
+                        <div className="bg-[#23272e] p-3 rounded mb-2">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs text-neutral-500 font-mono">🌐</span>
+                            <span className="text-xs text-neutral-400 font-mono">{getDomain(visitor.pageUrl)}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-neutral-500 font-mono">📄</span>
+                            <span className="text-sm text-lime-400 font-mono font-semibold">
+                              {getPageName(visitor.pageUrl)}
+                            </span>
+                          </div>
+                          <div className="mt-1">
+                            <span className="text-xs text-neutral-600 font-mono break-all">
+                              {visitor.pageUrl}
+                            </span>
+                          </div>
                         </div>
-                        {visitor.referrer && (
-                          <div className="text-sm text-neutral-400 font-mono">
-                            🔗 From: {visitor.referrer}
+                        
+                        {/* Referrer Information */}
+                        {visitor.referrer && visitor.referrer !== '' && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-neutral-500 font-mono">🔗</span>
+                            <span className="text-xs text-neutral-400 font-mono">
+                              From: {visitor.referrer}
+                            </span>
                           </div>
                         )}
                       </div>
@@ -397,9 +527,9 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
           {activeTab === 'setup' && selectedProject && (
             <div className="space-y-6">
               <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
-                <h2 className="text-xl font-bold text-green-400 mb-4 font-mono">Tracking Script</h2>
+                <h2 className="text-xl font-bold text-green-400 mb-4 font-mono">Setup Instructions</h2>
                 <p className="text-neutral-400 mb-4 font-mono">
-                  Add this script to your website to start tracking visitors:
+                  Add this script to your website's <code className="bg-[#18181b] p-1 rounded text-lime-400">&lt;head&gt;</code> to start tracking visitors:
                 </p>
                 
                 <div className="bg-[#18181b] p-4 rounded border border-neutral-800 mb-4">
