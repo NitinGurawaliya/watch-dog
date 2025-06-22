@@ -100,11 +100,3 @@ export async function GET(
     );
   }
 }
-
-// Function to broadcast updates to all connected clients for a project
-export async function broadcastUpdate(projectId: string) {
-  const controller = connections.get(projectId);
-  if (controller) {
-    await sendStats(projectId, controller);
-  }
-} 
