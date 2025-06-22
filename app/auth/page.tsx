@@ -1,4 +1,4 @@
-import LoginButton from '@/components/LoginButton'
+import LoginButton from '../../components/LoginButton'
 import { requireGuest } from '@/lib/auth-utils'
 import React from 'react'
 import { 
