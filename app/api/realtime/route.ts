@@ -10,93 +10,80 @@ interface SessionUser {
   name?: string;
 }
 
-// Store active connections are now in lib/broadcaster.ts
+export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const projectId = searchParams.get('projectId');
 
-export async function GET(
-  request: NextRequest,
-) {
-  try {
-    const session = await getServerSession(authConfig);
-    
-    if (!session?.user || !(session.user as SessionUser).id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const { searchParams } = new URL(request.url);
-    const projectId = searchParams.get('projectId');
-
-    if (!projectId) {
-      return NextResponse.json(
-        { error: 'Project ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify project belongs to user
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        userId: (session.user as SessionUser).id,
-      },
-    });
-
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
-    }
-
-    // Create SSE stream
-    const stream = new ReadableStream({
-      start(controller) {
-        // Store connection
-        connections.set(projectId, controller);
-
-        // Send initial data
-        controller.enqueue(`data: ${JSON.stringify({ type: 'connected', projectId })}\n\n`);
-
-        // Send initial stats
-        sendStats(projectId, controller);
-
-        // Set up periodic updates
-        const interval = setInterval(async () => {
-          try {
-            await sendStats(projectId, controller);
-          } catch (error) {
-            console.error('Error sending stats:', error);
-            clearInterval(interval);
-            connections.delete(projectId);
-            controller.close();
-          }
-        }, 5000); // Update every 5 seconds
-
-        // Clean up on disconnect
-        request.signal.addEventListener('abort', () => {
-          clearInterval(interval);
-          connections.delete(projectId);
-          controller.close();
-        });
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Cache-Control',
-      },
-    });
-  } catch (error) {
-    console.error('SSE error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  if (!projectId) {
+    return NextResponse.json({ error: 'Project ID is required' }, { status: 400 });
   }
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      let interval: NodeJS.Timeout | null = null;
+
+      const cleanup = () => {
+        if (interval) {
+          clearInterval(interval);
+        }
+        connections.delete(projectId);
+      };
+      
+      try {
+        const session = await getServerSession(authConfig);
+        const user = session?.user as SessionUser;
+
+        if (!user?.id) {
+          throw new Error('Unauthorized');
+        }
+
+        const project = await prisma.project.findFirst({
+          where: { id: projectId, userId: user.id },
+        });
+
+        if (!project) {
+          throw new Error('Project not found');
+        }
+
+        connections.set(projectId, controller);
+        
+        request.signal.addEventListener('abort', () => {
+          console.log(`Client for project ${projectId} disconnected.`);
+          cleanup();
+          try {
+            controller.close();
+          } catch (e) {}
+        });
+
+        await sendStats(projectId, controller);
+
+        interval = setInterval(async () => {
+          if (!connections.has(projectId)) {
+            cleanup();
+            try {
+              controller.close();
+            } catch (e) {}
+            return;
+          }
+          await sendStats(projectId, controller);
+        }, 5000);
+
+      } catch (error: any) {
+        console.error(`SSE stream error for project ${projectId}:`, error.message);
+        try {
+            controller.enqueue(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+            controller.close();
+        } catch(e) {}
+        cleanup();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    },
+  });
 }

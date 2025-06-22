@@ -1,4 +1,4 @@
- 'use client'
+'use client'
 
 import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
@@ -55,24 +55,32 @@ interface ReferrerStats {
 }
 
 const DashboardClient = ({ session }: DashboardClientProps) => {
-  const [activeTab, setActiveTab] = useState('overview')
-  const [projects, setProjects] = useState<Project[]>([])
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
-  const [realtimeStats, setRealtimeStats] = useState<RealtimeStats>({ count: 0, visitors: [] })
-  const [dailyStats, setDailyStats] = useState<DailyStats[]>([])
-  const [countryStats, setCountryStats] = useState<CountryStats[]>([])
-  const [referrerStats, setReferrerStats] = useState<ReferrerStats[]>([])
-  const [showNewProjectModal, setShowNewProjectModal] = useState(false)
-  const [newProjectName, setNewProjectName] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [realtimeConnected, setRealtimeConnected] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [deleteConfirmationName, setDeleteConfirmationName] = useState('')
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false)
-  const [isCreatingProject, setIsCreatingProject] = useState(false)
-  const [isDeletingProject, setIsDeletingProject] = useState(false)
-  const [isCopyingScript, setIsCopyingScript] = useState(false)
-  const eventSourceRef = useRef<EventSource | null>(null)
+  const [activeTab, setActiveTab] = useState('overview');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [realtimeStats, setRealtimeStats] = useState<RealtimeStats>({ count: 0, visitors: [] });
+  const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
+  const [countryStats, setCountryStats] = useState<CountryStats[]>([]);
+  const [referrerStats, setReferrerStats] = useState<ReferrerStats[]>([]);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [loading, setLoading] = useState(true);
+  
+  // Real-time connection state
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [realtimeConnected, setRealtimeConnected] = useState(false);
+  const [reconnectionAttempts, setReconnectionAttempts] = useState(0);
+  const maxReconnectionAttempts = 5;
+  const [reconnectionTimeout, setReconnectionTimeout] = useState<NodeJS.Timeout | null>(null);
+  
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmationName, setDeleteConfirmationName] = useState('');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCreatingProject, setIsCreatingProject] = useState(false);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
+  const [isCopyingScript, setIsCopyingScript] = useState(false);
+  
+  const eventSourceRef = useRef<EventSource | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -87,7 +95,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
       console.error('Error fetching projects:', error)
       setLoading(false)
     }
-  }, [selectedProject])
+  }, [selectedProject]);
 
   const fetchStats = useCallback(async () => {
     if (!selectedProject) return
@@ -111,77 +119,91 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
     } catch (error) {
       console.error('Error fetching stats:', error)
     }
-  }, [selectedProject])
+  }, [selectedProject]);
 
-  // Set up real-time connection
   const setupRealtimeConnection = useCallback(() => {
-    if (!selectedProject) return
+    if (!selectedProject || eventSourceRef.current?.readyState === EventSource.OPEN) return;
 
-    // Close existing connection
     if (eventSourceRef.current) {
-      eventSourceRef.current.close()
+      eventSourceRef.current.close();
+    }
+    if (reconnectionTimeout) {
+      clearTimeout(reconnectionTimeout);
+    }
+    
+    if (reconnectionAttempts >= maxReconnectionAttempts) {
+        console.log('Max reconnection attempts reached.');
+        setIsConnecting(false);
+        return;
     }
 
-    // Create new SSE connection
-    const eventSource = new EventSource(`/api/realtime?projectId=${selectedProject.id}`)
-    eventSourceRef.current = eventSource
+    setIsConnecting(true);
+    setRealtimeConnected(false);
+    console.log(`Attempting to connect (attempt ${reconnectionAttempts + 1})`);
+
+    const eventSource = new EventSource(`/api/realtime?projectId=${selectedProject.id}`);
+    eventSourceRef.current = eventSource;
 
     eventSource.onopen = () => {
-      console.log('Real-time connection established')
-      setRealtimeConnected(true)
-    }
+      console.log('SSE connection established');
+      setIsConnecting(false);
+      setRealtimeConnected(true);
+      setReconnectionAttempts(0);
+    };
 
     eventSource.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data)
-        
+        const data = JSON.parse(event.data);
+        if (data.type === 'error') {
+          console.error('SSE server error:', data.message);
+          eventSource.close();
+          return;
+        }
         if (data.type === 'stats') {
-          setRealtimeStats({
-            count: data.count,
-            visitors: data.visitors
-          })
+          setRealtimeStats(data);
         }
       } catch (error) {
-        console.error('Error parsing SSE data:', error)
+        console.error('Error parsing SSE data:', error);
       }
-    }
+    };
 
-    eventSource.onerror = (error) => {
-      console.error('SSE connection error:', error)
-      setRealtimeConnected(false)
-      eventSource.close()
-    }
+    eventSource.onerror = () => {
+      console.log('SSE connection error. Scheduling reconnect.');
+      eventSource.close();
+      setIsConnecting(false);
+      setRealtimeConnected(false);
 
-    // Cleanup function
-    return () => {
-      eventSource.close()
-      setRealtimeConnected(false)
-    }
-  }, [selectedProject])
-
+      const nextAttempt = reconnectionAttempts + 1;
+      const delay = Math.min(1000 * Math.pow(2, nextAttempt), 30000);
+      
+      const timeout = setTimeout(() => {
+        setReconnectionAttempts(nextAttempt);
+      }, delay);
+      setReconnectionTimeout(timeout);
+    };
+  }, [selectedProject, reconnectionAttempts, reconnectionTimeout]);
+  
   useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
+    fetchProjects();
+  }, [fetchProjects]);
 
   useEffect(() => {
     if (selectedProject) {
-      fetchStats()
-      const cleanup = setupRealtimeConnection()
-      
-      return () => {
-        if (cleanup) cleanup()
-      }
+        fetchStats();
+        // Trigger connection logic whenever project or reconnection state changes
+        setupRealtimeConnection();
     }
-  }, [selectedProject, fetchStats, setupRealtimeConnection])
-
-  // Cleanup on unmount
-  useEffect(() => {
+    
+    // Cleanup on unmount or when dependencies change
     return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close()
-      }
-    }
-  }, [])
+        if (eventSourceRef.current) {
+            eventSourceRef.current.close();
+        }
+        if (reconnectionTimeout) {
+            clearTimeout(reconnectionTimeout);
+        }
+    };
+  }, [selectedProject, reconnectionAttempts, fetchStats, setupRealtimeConnection]);
 
   const createProject = async () => {
     if (!newProjectName.trim()) return
@@ -471,10 +493,49 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             
             {/* Real-time connection indicator */}
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-green-400' : 'bg-yellow-400 animate-pulse'}`}></div>
+              <div className={`w-2 h-2 rounded-full ${
+                realtimeConnected 
+                  ? 'bg-green-400' 
+                  : isConnecting 
+                    ? 'bg-blue-400 animate-pulse' 
+                    : reconnectionAttempts > 0 
+                      ? 'bg-yellow-400 animate-pulse' 
+                      : 'bg-red-400 animate-pulse'
+              }`}></div>
               <span className="text-xs text-neutral-400 font-mono">
-                {realtimeConnected ? 'Live' : 'Connecting...'}
+                {realtimeConnected 
+                  ? 'Live' 
+                  : isConnecting
+                    ? 'Connecting...'
+                    : reconnectionAttempts > 0 
+                      ? `Reconnecting... (${reconnectionAttempts}/${maxReconnectionAttempts})`
+                      : 'Disconnected'
+                }
               </span>
+              {!realtimeConnected && !isConnecting && reconnectionAttempts >= maxReconnectionAttempts && (
+                <button
+                  onClick={() => {
+                    setReconnectionAttempts(0)
+                    setupRealtimeConnection()
+                  }}
+                  className="text-xs text-lime-400 hover:text-lime-300 transition cursor-pointer font-mono"
+                >
+                  Retry
+                </button>
+              )}
+              {/* Debug button - remove in production */}
+              <button
+                onClick={() => {
+                  console.log('Manual connection test')
+                  console.log('Selected project:', selectedProject)
+                  console.log('Current state:', { realtimeConnected, isConnecting, reconnectionAttempts })
+                  setReconnectionAttempts(0)
+                  setupRealtimeConnection()
+                }}
+                className="text-xs text-blue-400 hover:text-blue-300 transition cursor-pointer font-mono ml-2"
+              >
+                Debug
+              </button>
             </div>
           </div>
         </div>
