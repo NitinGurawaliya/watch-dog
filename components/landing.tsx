@@ -11,9 +11,12 @@ import {
   EyeIcon,
   ArrowRightEndOnRectangleIcon
 } from '@heroicons/react/24/outline';
-
-
+import { Session } from 'next-auth';
 import { motion } from 'framer-motion';
+
+interface LandingProps {
+  session?: Session | null;
+}
 
 const features = [
   {
@@ -120,7 +123,7 @@ const testimonials = [
   },
 ];
 
-export default function Landing() {
+export default function Landing({ session }: LandingProps) {
   return (
     <div className="bg-[#18181b] text-neutral-100 min-h-screen font-mono">
       {/* Navbar */}
@@ -136,7 +139,15 @@ export default function Landing() {
             <a href="#code" className="hover:text-lime-400 transition px-2">Code</a>
             <a href="#pricing" className="hover:text-lime-400 transition px-2">Pricing</a>
             <a href="#testimonials" className="hover:text-lime-400 transition px-2">Devs</a>
-            <a href="/auth" className="hover:text-lime-400 transition flex items-center gap-2 px-3 py-1 border border-lime-400 rounded bg-[#18181b]"> <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Login</a>
+            {session?.user ? (
+              <a href="/dashboard" className="hover:text-lime-400 transition flex items-center gap-2 px-3 py-1 border border-lime-400 rounded bg-[#18181b]">
+                <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Dashboard
+              </a>
+            ) : (
+              <a href="/auth" className="hover:text-lime-400 transition flex items-center gap-2 px-3 py-1 border border-lime-400 rounded bg-[#18181b]">
+                <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Login
+              </a>
+            )}
             <a href="#pricing" className="ml-4 px-5 py-2 rounded bg-lime-400 text-[#18181b] hover:bg-lime-300 transition font-bold shadow-sm">Get Started</a>
           </div>
           <div className="md:hidden">
@@ -156,9 +167,15 @@ export default function Landing() {
           Realtime, privacy-first analytics for devs. Know who&apos;s visiting, where they came from, and what they&apos;re doing — instantly.
         </motion.p>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.7 }} className="flex flex-col sm:flex-row gap-3 justify-center mb-6 w-full">
-          <a href="#pricing" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition flex items-center gap-2 justify-center">
-            Get Started Free <ArrowRightIcon className="h-5 w-5" />
-          </a>
+          {session?.user ? (
+            <a href="/dashboard" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition flex items-center gap-2 justify-center">
+              Go to Dashboard <ArrowRightIcon className="h-5 w-5" />
+            </a>
+          ) : (
+            <a href="/auth" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition flex items-center gap-2 justify-center">
+              Get Started Free <ArrowRightIcon className="h-5 w-5" />
+            </a>
+          )}
           <a href="https://demo.whosviewing.me" target="_blank" rel="noopener" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-amber-400 text-amber-400 font-bold text-base hover:bg-amber-400 hover:text-[#18181b] transition flex items-center gap-2 justify-center">
             See Demo
           </a>
@@ -271,10 +288,10 @@ export default function Landing() {
                 ))}
               </ul>
               <a
-                href={plan.name === 'Free' ? '#pricing' : '/auth'}
+                href={plan.name === 'Free' ? (session?.user ? '/dashboard' : '/auth') : (session?.user ? '/dashboard' : '/auth')}
                 className={`mt-auto px-5 py-2 rounded font-bold transition shadow-sm w-full ${plan.highlight ? 'bg-green-400 text-[#18181b] hover:bg-green-300' : 'bg-[#23272e] text-green-400 border border-green-400 hover:bg-green-400 hover:text-[#18181b]'}`}
               >
-                {plan.name === 'Free' ? 'Get Started' : 'Choose Plan'}
+                {plan.name === 'Free' ? (session?.user ? 'Go to Dashboard' : 'Get Started') : (session?.user ? 'Go to Dashboard' : 'Choose Plan')}
               </a>
             </motion.div>
           ))}
@@ -298,4 +315,4 @@ export default function Landing() {
       </footer>
     </div>
   );
-} 
+}

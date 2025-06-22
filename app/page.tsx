@@ -1,9 +1,12 @@
 import Landing from "@/components/landing";
+import { getOptionalSession } from "@/lib/auth-utils";
 
-export default function LoginPage() {
+export default async function HomePage() {
+  const session = await getOptionalSession();
+  
   return (
     <div className="">
-      <Landing />
+      <Landing session={session} />
     </div>
   );
 }
