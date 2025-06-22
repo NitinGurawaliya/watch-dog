@@ -69,6 +69,9 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteConfirmationName, setDeleteConfirmationName] = useState('')
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [isDeletingProject, setIsDeletingProject] = useState(false)
+  const [isCopyingScript, setIsCopyingScript] = useState(false)
   const eventSourceRef = useRef<EventSource | null>(null)
 
   const fetchProjects = useCallback(async () => {
@@ -183,6 +186,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   const createProject = async () => {
     if (!newProjectName.trim()) return
 
+    setIsCreatingProject(true)
     try {
       const response = await fetch('/api/project', {
         method: 'POST',
@@ -197,6 +201,8 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
       setNewProjectName('')
     } catch (error) {
       console.error('Error creating project:', error)
+    } finally {
+      setIsCreatingProject(false)
     }
   }
 
@@ -207,6 +213,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
       return
     }
 
+    setIsDeletingProject(true)
     try {
       await fetch(`/api/project/${selectedProject.id}`, { method: 'DELETE' })
       
@@ -219,6 +226,8 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
     } catch (error) {
       console.error('Error deleting project:', error)
       // Maybe show an error toast here
+    } finally {
+      setIsDeletingProject(false)
     }
   }
 
@@ -228,8 +237,15 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
     return `<script src="${baseUrl}/track.js" data-site="${projectId}"></script>`
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
+  const copyToClipboard = async (text: string) => {
+    setIsCopyingScript(true)
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch (error) {
+      console.error('Error copying to clipboard:', error)
+    } finally {
+      setIsCopyingScript(false)
+    }
   }
 
   // Function to extract page name from URL
@@ -295,7 +311,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             </p>
             <button
               onClick={() => setShowNewProjectModal(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono font-bold mx-auto"
+              className="flex items-center gap-2 px-6 py-3 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono font-bold mx-auto cursor-pointer"
             >
               <PlusIcon className="h-5 w-5" />
               Create Your First Project
@@ -319,16 +335,25 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
               <div className="flex gap-3">
                 <button
                   onClick={createProject}
-                  className="flex-1 px-4 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono"
+                  disabled={isCreatingProject}
+                  className="flex-1 px-4 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono cursor-pointer disabled:bg-lime-400/50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
-                  Create
+                  {isCreatingProject ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#18181b]"></div>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create'
+                  )}
                 </button>
                 <button
                   onClick={() => {
                     setShowNewProjectModal(false)
                     setNewProjectName('')
                   }}
-                  className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 rounded hover:bg-neutral-600 transition font-mono"
+                  disabled={isCreatingProject}
+                  className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 rounded hover:bg-neutral-600 transition font-mono cursor-pointer disabled:bg-neutral-700/50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
@@ -352,7 +377,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             </div>
             <button
               onClick={() => setIsSidebarOpen(false)}
-              className="md:hidden text-neutral-400 hover:text-white"
+              className="md:hidden text-neutral-400 hover:text-white cursor-pointer"
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -361,7 +386,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
           <nav className="space-y-2">
             <button
               onClick={() => setActiveTab('overview')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-mono transition ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-mono transition cursor-pointer ${
                 activeTab === 'overview' 
                   ? 'bg-lime-400 text-[#18181b]' 
                   : 'text-neutral-300 hover:text-lime-400 hover:bg-neutral-800'
@@ -372,7 +397,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             </button>
             <button
               onClick={() => setActiveTab('live')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-mono transition ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-mono transition cursor-pointer ${
                 activeTab === 'live' 
                   ? 'bg-lime-400 text-[#18181b]' 
                   : 'text-neutral-300 hover:text-lime-400 hover:bg-neutral-800'
@@ -383,7 +408,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             </button>
             <button
               onClick={() => setActiveTab('setup')}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-mono transition ${
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm font-mono transition cursor-pointer ${
                 activeTab === 'setup' 
                   ? 'bg-lime-400 text-[#18181b]' 
                   : 'text-neutral-300 hover:text-lime-400 hover:bg-neutral-800'
@@ -401,7 +426,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
           </div>
           <button
             onClick={() => signOut({ callbackUrl: '/' })}
-            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-red-400 transition font-mono"
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-300 hover:text-red-400 transition font-mono cursor-pointer"
           >
             <ArrowRightOnRectangleIcon className="h-4 w-4" />
             Sign Out
@@ -417,7 +442,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setIsSidebarOpen(true)}
-                className="md:hidden text-neutral-400 hover:text-white"
+                className="md:hidden text-neutral-400 hover:text-white cursor-pointer"
               >
                 <Bars3Icon className="h-6 w-6" />
               </button>
@@ -427,7 +452,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                   const project = projects.find(p => p.id === e.target.value)
                   setSelectedProject(project || null)
                 }}
-                className="bg-[#18181b] border border-neutral-700 rounded px-3 py-2 text-lime-400 font-mono"
+                className="bg-[#18181b] border border-neutral-700 rounded px-3 py-2 text-lime-400 font-mono cursor-pointer"
               >
                 {projects.map(project => (
                   <option key={project.id} value={project.id}>
@@ -437,7 +462,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
               </select>
               <button
                 onClick={() => setShowNewProjectModal(true)}
-                className="flex items-center gap-2 px-3 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono text-sm"
+                className="flex items-center gap-2 px-3 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono text-sm cursor-pointer"
               >
                 <PlusIcon className="h-4 w-4" />
                 <span className="hidden sm:inline">New Project</span>
@@ -645,9 +670,17 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 
                 <button
                   onClick={() => copyToClipboard(getTrackingScript(selectedProject.id))}
-                  className="px-4 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono"
+                  disabled={isCopyingScript}
+                  className="px-4 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono cursor-pointer disabled:bg-lime-400/50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  Copy Script
+                  {isCopyingScript ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#18181b]"></div>
+                      Copying...
+                    </>
+                  ) : (
+                    'Copy Script'
+                  )}
                 </button>
               </div>
 
@@ -674,7 +707,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 </p>
                 <button
                   onClick={() => setShowDeleteModal(true)}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition font-mono"
+                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition font-mono cursor-pointer"
                 >
                   Delete Project
                 </button>
@@ -706,17 +739,68 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             <div className="flex gap-3">
               <button
                 onClick={deleteProject}
-                disabled={deleteConfirmationName !== selectedProject.name}
-                className="flex-1 px-4 py-2 bg-red-500 text-white rounded transition font-mono disabled:bg-red-500/30 disabled:cursor-not-allowed"
+                disabled={deleteConfirmationName !== selectedProject.name || isDeletingProject}
+                className="flex-1 px-4 py-2 bg-red-500 text-white rounded transition font-mono cursor-pointer disabled:bg-red-500/30 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                Delete this project
+                {isDeletingProject ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    Deleting...
+                  </>
+                ) : (
+                  'Delete this project'
+                )}
               </button>
               <button
                 onClick={() => {
                   setShowDeleteModal(false)
                   setDeleteConfirmationName('')
                 }}
-                className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 rounded hover:bg-neutral-600 transition font-mono"
+                disabled={isDeletingProject}
+                className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 rounded hover:bg-neutral-600 transition font-mono cursor-pointer disabled:bg-neutral-700/50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* New Project Modal */}
+      {showNewProjectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800 w-96">
+            <h3 className="text-xl font-bold text-green-400 mb-4 font-mono">Create New Project</h3>
+            <input
+              type="text"
+              placeholder="Project name"
+              value={newProjectName}
+              onChange={(e) => setNewProjectName(e.target.value)}
+              className="w-full bg-[#18181b] border border-neutral-700 rounded px-3 py-2 text-lime-400 font-mono mb-4"
+              onKeyPress={(e) => e.key === 'Enter' && createProject()}
+            />
+            <div className="flex gap-3">
+              <button
+                onClick={createProject}
+                disabled={isCreatingProject}
+                className="flex-1 px-4 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono cursor-pointer disabled:bg-lime-400/50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isCreatingProject ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#18181b]"></div>
+                    Creating...
+                  </>
+                ) : (
+                  'Create'
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  setShowNewProjectModal(false)
+                  setNewProjectName('')
+                }}
+                disabled={isCreatingProject}
+                className="flex-1 px-4 py-2 bg-neutral-700 text-neutral-300 rounded hover:bg-neutral-600 transition font-mono cursor-pointer disabled:bg-neutral-700/50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>
