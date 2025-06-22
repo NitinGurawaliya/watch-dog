@@ -52,7 +52,8 @@ export async function GET(request: NextRequest) {
           cleanup();
           try {
             controller.close();
-          } catch (e) {}
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          } catch (_e) {}
         });
 
         await sendStats(projectId, controller);
@@ -62,18 +63,21 @@ export async function GET(request: NextRequest) {
             cleanup();
             try {
               controller.close();
-            } catch (e) {}
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            } catch (_e) {}
             return;
           }
           await sendStats(projectId, controller);
         }, 5000);
 
-      } catch (error: any) {
-        console.error(`SSE stream error for project ${projectId}:`, error.message);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'An unknown error occurred';
+        console.error(`SSE stream error for project ${projectId}:`, message);
         try {
-            controller.enqueue(`data: ${JSON.stringify({ type: 'error', message: error.message })}\n\n`);
+            controller.enqueue(`data: ${JSON.stringify({ type: 'error', message })}\n\n`);
             controller.close();
-        } catch(e) {}
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        } catch(_e) {}
         cleanup();
       }
     },

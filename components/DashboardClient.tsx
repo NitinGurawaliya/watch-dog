@@ -203,7 +203,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
             clearTimeout(reconnectionTimeout);
         }
     };
-  }, [selectedProject, reconnectionAttempts, fetchStats, setupRealtimeConnection]);
+  }, [selectedProject, reconnectionAttempts, fetchStats, setupRealtimeConnection, reconnectionTimeout]);
 
   const createProject = async () => {
     if (!newProjectName.trim()) return
