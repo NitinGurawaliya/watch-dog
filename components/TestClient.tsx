@@ -32,7 +32,7 @@ export default function TestClient({ projects }: TestClientProps) {
       <div className="min-h-screen bg-gray-100 p-8">
         <div className="max-w-4xl mx-auto">
           <h1 className="text-3xl font-bold text-gray-800 mb-6">
-            Who's Viewing Me - Interactive Test Page
+            Who&apos;s Viewing Me - Interactive Test Page
           </h1>
           
           {projects.length > 0 ? (
@@ -57,10 +57,10 @@ export default function TestClient({ projects }: TestClientProps) {
                 <div className="bg-green-100 border border-green-300 rounded-lg p-6 mb-6">
                   <h2 className="text-xl font-semibold text-green-800 mb-2">✅ Tracking is Active</h2>
                   <p className="text-green-700">
-                    The tracking script for project "<strong>{selectedProject.name}</strong>" is now active on this page.
+                    The tracking script for project &quot;<strong>{selectedProject.name}</strong>&quot; is now active on this page.
                   </p>
                   <p className="text-green-700 mt-2">
-                    Check your dashboard's Live Feed to see this visit!
+                    Check your dashboard&apos;s Live Feed to see this visit!
                   </p>
                 </div>
               )}

@@ -3,6 +3,12 @@ import { getServerSession } from 'next-auth';
 import { authConfig } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+interface SessionUser {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,7 +16,7 @@ export async function GET(
   try {
     const session = await getServerSession(authConfig);
     
-    if (!session?.user || !(session.user as any).id) {
+    if (!session?.user || !(session.user as SessionUser).id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -23,7 +29,7 @@ export async function GET(
     const project = await prisma.project.findFirst({
       where: {
         id: projectId,
-        userId: (session.user as any).id,
+        userId: (session.user as SessionUser).id,
       },
     });
 

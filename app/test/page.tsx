@@ -3,10 +3,16 @@ import { prisma } from '@/lib/prisma'
 import React from 'react'
 import TestClient from '@/components/TestClient'
 
+interface SessionUser {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
 const TestPage = async () => {
   const session = await requireAuth();
   const projects = await prisma.project.findMany({
-    where: { userId: (session.user as any).id },
+    where: { userId: (session.user as SessionUser).id },
     orderBy: { createdAt: 'asc' },
   });
 

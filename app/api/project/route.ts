@@ -3,11 +3,17 @@ import { getServerSession } from 'next-auth';
 import { authConfig } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 
+interface SessionUser {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authConfig);
     
-    if (!session?.user || !(session.user as any).id) {
+    if (!session?.user || !(session.user as SessionUser).id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -27,7 +33,7 @@ export async function POST(request: NextRequest) {
     const project = await prisma.project.create({
       data: {
         name,
-        userId: (session.user as any).id,
+        userId: (session.user as SessionUser).id,
       },
     });
 
@@ -41,11 +47,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getServerSession(authConfig);
     
-    if (!session?.user || !(session.user as any).id) {
+    if (!session?.user || !(session.user as SessionUser).id) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -54,7 +60,7 @@ export async function GET(request: NextRequest) {
 
     const projects = await prisma.project.findMany({
       where: {
-        userId: (session.user as any).id,
+        userId: (session.user as SessionUser).id,
       },
       orderBy: {
         createdAt: 'desc',

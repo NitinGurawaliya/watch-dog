@@ -2,7 +2,7 @@
 
 import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { 
   ChartBarIcon, 
   EyeIcon, 
@@ -64,19 +64,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   const [newProjectName, setNewProjectName] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetchProjects()
-  }, [])
-
-  useEffect(() => {
-    if (selectedProject) {
-      fetchStats()
-      const interval = setInterval(fetchStats, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [selectedProject])
-
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     try {
       const response = await fetch('/api/project')
       const data = await response.json()
@@ -89,9 +77,9 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
       console.error('Error fetching projects:', error)
       setLoading(false)
     }
-  }
+  }, [selectedProject])
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     if (!selectedProject) return
 
     try {
@@ -116,7 +104,19 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
     } catch (error) {
       console.error('Error fetching stats:', error)
     }
-  }
+  }, [selectedProject])
+
+  useEffect(() => {
+    fetchProjects()
+  }, [fetchProjects])
+
+  useEffect(() => {
+    if (selectedProject) {
+      fetchStats()
+      const interval = setInterval(fetchStats, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [selectedProject, fetchStats])
 
   const createProject = async () => {
     if (!newProjectName.trim()) return
@@ -163,7 +163,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
         <div className="p-6">
           <div className="flex items-center gap-2 mb-8">
             <UserGroupIcon className="h-6 w-6 text-lime-400" />
-            <span className="font-bold text-lg text-lime-400 font-mono">who's viewing me</span>
+            <span className="font-bold text-lg text-lime-400 font-mono">who&apos;s viewing me</span>
           </div>
           
           <nav className="space-y-2">
@@ -292,7 +292,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <h3 className="text-green-400 font-semibold mb-4 font-mono">7-Day Traffic</h3>
                   <div className="space-y-2">
-                    {dailyStats.map((day, index) => (
+                    {dailyStats.map((day) => (
                       <div key={day.date} className="flex items-center gap-3">
                         <span className="text-xs text-neutral-400 font-mono w-16">
                           {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -315,7 +315,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <h3 className="text-green-400 font-semibold mb-4 font-mono">Top Countries</h3>
                   <div className="space-y-2">
-                    {countryStats.slice(0, 5).map((country, index) => (
+                    {countryStats.slice(0, 5).map((country) => (
                       <div key={country.country} className="flex items-center gap-3">
                         <span className="text-xs text-neutral-400 font-mono flex-1">
                           {country.country}
@@ -339,7 +339,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
               <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                 <h3 className="text-green-400 font-semibold mb-4 font-mono">Top Referrers</h3>
                 <div className="space-y-2">
-                  {referrerStats.slice(0, 10).map((referrer, index) => (
+                  {referrerStats.slice(0, 10).map((referrer) => (
                     <div key={referrer.referrer} className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-b-0">
                       <span className="text-sm text-neutral-300 font-mono">{referrer.referrer}</span>
                       <span className="text-sm text-purple-400 font-mono">{referrer.visitors} visitors</span>

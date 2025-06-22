@@ -11,7 +11,7 @@ const Auth = async () => {
       <div className="bg-[#23272e] p-8 rounded-lg border border-neutral-800 max-w-md w-full">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-lime-400 font-mono mb-2">
-            who's viewing me
+            who&apos;s viewing me
           </h1>
           <p className="text-neutral-400 text-sm font-mono">
             Sign in to access your analytics dashboard

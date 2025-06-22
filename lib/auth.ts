@@ -5,6 +5,12 @@ import TwitterProvider from 'next-auth/providers/twitter';
 import type { NextAuthOptions } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 
+interface SessionUser {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
 export const authConfig: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -30,13 +36,13 @@ export const authConfig: NextAuthOptions = {
     signIn: '/auth',
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user }) {
       console.log('SIGNING IN USER:', user?.email);
       return true;
     },
     async session({ session, user }) {
       if (session.user) {
-        (session.user as any).id = user.id;
+        (session.user as SessionUser).id = user.id;
       }
       return session;
     },
