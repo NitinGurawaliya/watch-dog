@@ -11,9 +11,7 @@ import {
   ArrowRightOnRectangleIcon,
   GlobeAltIcon,
   LinkIcon,
-  UserGroupIcon,
-  ClipboardDocumentIcon,
-  CheckIcon
+  UserGroupIcon
 } from '@heroicons/react/24/outline'
 
 interface DashboardClientProps {
@@ -529,7 +527,7 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
               <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                 <h2 className="text-xl font-bold text-green-400 mb-4 font-mono">Setup Instructions</h2>
                 <p className="text-neutral-400 mb-4 font-mono">
-                  Add this script to your website's <code className="bg-[#18181b] p-1 rounded text-lime-400">&lt;head&gt;</code> to start tracking visitors:
+                  Add this script to your website&apos;s <code className="bg-[#18181b] p-1 rounded text-lime-400">&lt;head&gt;</code> to start tracking visitors:
                 </p>
                 
                 <div className="bg-[#18181b] p-4 rounded border border-neutral-800 mb-4">

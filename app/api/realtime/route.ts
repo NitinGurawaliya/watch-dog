@@ -9,6 +9,17 @@ interface SessionUser {
   name?: string;
 }
 
+interface Visitor {
+  id: string;
+  pageUrl: string;
+  referrer: string | null;
+  country: string | null;
+  city: string | null;
+  userAgent: string | null;
+  timestamp: Date;
+  sessionId: string | null;
+}
+
 // Store active connections
 const connections = new Map<string, ReadableStreamDefaultController>();
 
@@ -121,7 +132,7 @@ async function sendStats(projectId: string, controller: ReadableStreamDefaultCon
 
     // Count unique visitors
     const uniqueVisitors = new Set();
-    const visitorDetails: any[] = [];
+    const visitorDetails: Visitor[] = [];
 
     realtimeEvents.forEach(event => {
       const visitorKey = event.sessionId || event.ip;
