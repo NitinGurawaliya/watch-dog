@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { broadcastUpdate } from '../realtime/route';
+import { broadcastUpdate } from '@/lib/broadcaster';
 
 // Simple IP detection from headers
 function getClientIP(request: NextRequest): string {

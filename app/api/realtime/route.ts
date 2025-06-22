@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authConfig } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { connections, sendStats } from '@/lib/broadcaster';
 
 interface SessionUser {
   id: string;
@@ -9,19 +10,7 @@ interface SessionUser {
   name?: string;
 }
 
-interface Visitor {
-  id: string;
-  pageUrl: string;
-  referrer: string | null;
-  country: string | null;
-  city: string | null;
-  userAgent: string | null;
-  timestamp: Date;
-  sessionId: string | null;
-}
-
-// Store active connections
-const connections = new Map<string, ReadableStreamDefaultController>();
+// Store active connections are now in lib/broadcaster.ts
 
 export async function GET(
   request: NextRequest,
@@ -109,58 +98,6 @@ export async function GET(
       { error: 'Internal server error' },
       { status: 500 }
     );
-  }
-}
-
-async function sendStats(projectId: string, controller: ReadableStreamDefaultController) {
-  try {
-    // Get realtime stats
-    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
-    
-    const realtimeEvents = await prisma.event.findMany({
-      where: {
-        projectId,
-        timestamp: {
-          gte: oneMinuteAgo,
-        },
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
-      take: 100,
-    });
-
-    // Count unique visitors
-    const uniqueVisitors = new Set();
-    const visitorDetails: Visitor[] = [];
-
-    realtimeEvents.forEach(event => {
-      const visitorKey = event.sessionId || event.ip;
-      if (!uniqueVisitors.has(visitorKey)) {
-        uniqueVisitors.add(visitorKey);
-        visitorDetails.push({
-          id: event.id,
-          pageUrl: event.pageUrl,
-          referrer: event.referrer,
-          country: event.country,
-          city: event.city,
-          userAgent: event.userAgent,
-          timestamp: event.timestamp,
-          sessionId: event.sessionId,
-        });
-      }
-    });
-
-    const stats = {
-      type: 'stats',
-      count: uniqueVisitors.size,
-      visitors: visitorDetails,
-      timestamp: new Date().toISOString(),
-    };
-
-    controller.enqueue(`data: ${JSON.stringify(stats)}\n\n`);
-  } catch (error) {
-    console.error('Error getting stats:', error);
   }
 }
 
