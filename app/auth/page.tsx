@@ -1,10 +1,10 @@
-import { requireGuest } from '@/lib/auth-utils'
+import { requireGuest } from '../../lib/auth-utils'
 import React from 'react'
 import { 
   ArrowRightEndOnRectangleIcon,
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import LoginButton from '@/components/LoginButton';
+import LoginButton from '../../components/LoginButton';
 
 const Auth = async () => {
   // This will redirect authenticated users to /dashboard
