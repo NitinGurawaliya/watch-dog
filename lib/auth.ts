@@ -5,6 +5,13 @@ import TwitterProvider from 'next-auth/providers/twitter';
 import type { NextAuthOptions } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 
+// Extend the AdapterUser type to include plan
+declare module "next-auth/adapters" {
+  interface AdapterUser {
+    plan?: string;
+  }
+}
+
 interface SessionUser {
   id: string;
   email?: string;

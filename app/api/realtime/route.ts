@@ -1,14 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authConfig } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
 import { connections, sendStats } from '@/lib/broadcaster';
-
-interface SessionUser {
-  id: string;
-  email?: string;
-  name?: string;
-}
+import { 
+  requireAuth, 
+  verifyProjectOwnership 
+} from '@/lib/api-utils';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -30,20 +25,8 @@ export async function GET(request: NextRequest) {
       };
       
       try {
-        const session = await getServerSession(authConfig);
-        const user = session?.user as SessionUser;
-
-        if (!user?.id) {
-          throw new Error('Unauthorized');
-        }
-
-        const project = await prisma.project.findFirst({
-          where: { id: projectId, userId: user.id },
-        });
-
-        if (!project) {
-          throw new Error('Project not found');
-        }
+        const user = await requireAuth();
+        await verifyProjectOwnership(projectId, user.id);
 
         connections.set(projectId, controller);
         

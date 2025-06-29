@@ -94,6 +94,7 @@ export default function Landing({ session }: LandingProps) {
             <a href="#how" className="hover:text-lime-400 transition px-2">How It Works</a>
             <a href="#code" className="hover:text-lime-400 transition px-2">Code</a>
             <a href="#testimonials" className="hover:text-lime-400 transition px-2">Devs</a>
+            <a href="/pricing" className="hover:text-lime-400 transition px-2">Pricing</a>
             {session?.user ? (
               <a href="/dashboard" className="hover:text-lime-400 transition flex items-center gap-2 px-3 py-1 border border-lime-400 rounded bg-[#18181b]">
                 <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Dashboard
@@ -127,6 +128,7 @@ export default function Landing({ session }: LandingProps) {
             <a href="#how" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">How It Works</a>
             <a href="#code" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Code</a>
             <a href="#testimonials" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Devs</a>
+            <a href="/pricing" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Pricing</a>
             <div className="w-4/5 border-t border-neutral-800 my-4"></div>
             {session?.user ? (
               <a href="/dashboard" className="w-4/5 text-center px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold shadow">

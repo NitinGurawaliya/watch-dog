@@ -1,104 +1,45 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authConfig } from '@/lib/auth';
-import { prisma } from '@/lib/prisma';
-
-interface SessionUser {
-  id: string;
-  email?: string;
-  name?: string;
-}
-
-interface VisitorDetail {
-  id: string;
-  pageUrl: string;
-  referrer: string | null;
-  country: string | null;
-  city: string | null;
-  userAgent: string;
-  timestamp: Date;
-  sessionId: string | null;
-}
+import { NextRequest } from 'next/server';
+import { 
+  requireAuth, 
+  createErrorResponse, 
+  createSuccessResponse,
+  verifyProjectOwnership
+} from '@/lib/api-utils';
+import { 
+  RequestContext, 
+  RealtimeStatsResponse
+} from '../../../../../../interfaces/api';
+import { EventQueries } from '../../../../../../queries';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+  { params }: RequestContext
+): Promise<RealtimeStatsResponse> {
   try {
-    const session = await getServerSession(authConfig);
-    
-    if (!session?.user || !(session.user as SessionUser).id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+    const user = await requireAuth();
     const { id: projectId } = await params;
 
     // Verify project belongs to user
-    const project = await prisma.project.findFirst({
-      where: {
-        id: projectId,
-        userId: (session.user as SessionUser).id,
-      },
-    });
+    await verifyProjectOwnership(projectId, user.id);
 
-    if (!project) {
-      return NextResponse.json(
-        { error: 'Project not found' },
-        { status: 404 }
-      );
+    // Get real-time stats
+    const result = await EventQueries.getRealtimeStats(projectId, 1);
+
+    if (!result.success) {
+      return createErrorResponse(result.error || 'Failed to get real-time stats', 500);
     }
 
-    // Get events from last minute
-    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
-    
-    const realtimeEvents = await prisma.event.findMany({
-      where: {
-        projectId,
-        timestamp: {
-          gte: oneMinuteAgo,
-        },
-      },
-      orderBy: {
-        timestamp: 'desc',
-      },
-      take: 100, // Increased limit to get more data for deduplication
-    });
-
-    // Group by unique sessions (preferred) or IPs (fallback)
-    const uniqueVisitors = new Set();
-    const visitorDetails: VisitorDetail[] = [];
-
-    realtimeEvents.forEach(event => {
-      // Use sessionId if available, otherwise fall back to IP
-      const visitorKey = event.sessionId || event.ip;
-      
-      if (!uniqueVisitors.has(visitorKey)) {
-        uniqueVisitors.add(visitorKey);
-        visitorDetails.push({
-          id: event.id,
-          pageUrl: event.pageUrl,
-          referrer: event.referrer,
-          country: event.country,
-          city: event.city,
-          userAgent: event.userAgent,
-          timestamp: event.timestamp,
-          sessionId: event.sessionId,
-        });
-      }
-    });
-
-    return NextResponse.json({
-      count: uniqueVisitors.size,
-      visitors: visitorDetails,
-    });
+    return createSuccessResponse(result.data!);
   } catch (error) {
     console.error('Realtime stats error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    if (error instanceof Error) {
+      if (error.message.includes('Unauthorized')) {
+        return createErrorResponse('Unauthorized', 401);
+      }
+      if (error.message.includes('Project not found')) {
+        return createErrorResponse('Project not found', 404);
+      }
+    }
+    return createErrorResponse('Internal server error', 500);
   }
 } 

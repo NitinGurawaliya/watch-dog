@@ -523,19 +523,6 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                   Retry
                 </button>
               )}
-              {/* Debug button - remove in production */}
-              <button
-                onClick={() => {
-                  console.log('Manual connection test')
-                  console.log('Selected project:', selectedProject)
-                  console.log('Current state:', { realtimeConnected, isConnecting, reconnectionAttempts })
-                  setReconnectionAttempts(0)
-                  setupRealtimeConnection()
-                }}
-                className="text-xs text-blue-400 hover:text-blue-300 transition cursor-pointer font-mono ml-2"
-              >
-                Debug
-              </button>
             </div>
           </div>
         </div>
