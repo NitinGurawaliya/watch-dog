@@ -52,31 +52,8 @@ const features = [
   },
 ];
 
-const codeExample = `\n<script src=\"https://cdn.whosviewing.me/track.js\" data-site=\"YOUR_SITE_ID\"></script>\n`;
+const codeExample = '<script src="https://cdn.whosviewing.me/track.js" data-site="YOUR_SITE_ID"></script>';
 
-const testimonials = [
-  {
-    img: '/tweet1.png',
-    alt: 'Tweet from @devguy',
-    url: 'https://twitter.com/devguy/status/1234567890',
-    user: '@devguy',
-    text: 'Absolutely loving the privacy-first analytics from @whosviewingme! So easy to integrate and the live feed is 🔥'
-  },
-  {
-    img: '/tweet2.png',
-    alt: 'Tweet from @indiehacker',
-    url: 'https://twitter.com/indiehacker/status/2345678901',
-    user: '@indiehacker',
-    text: 'Finally, analytics that respect my users. The API is a dream for custom dashboards.'
-  },
-  {
-    img: '/tweet3.png',
-    alt: 'Tweet from @startuplady',
-    url: 'https://twitter.com/startuplady/status/3456789012',
-    user: '@startuplady',
-    text: 'Setup took 30 seconds. No cookies, no bloat. Just what I want as a dev.'
-  },
-];
 
 export default function Landing({ session }: LandingProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -94,7 +71,6 @@ export default function Landing({ session }: LandingProps) {
             <a href="#how" className="hover:text-lime-400 transition px-2">How It Works</a>
             <a href="#code" className="hover:text-lime-400 transition px-2">Code</a>
             <a href="#testimonials" className="hover:text-lime-400 transition px-2">Devs</a>
-            <a href="/pricing" className="hover:text-lime-400 transition px-2">Pricing</a>
             {session?.user ? (
               <a href="/dashboard" className="hover:text-lime-400 transition flex items-center gap-2 px-3 py-1 border border-lime-400 rounded bg-[#18181b]">
                 <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Dashboard
@@ -128,7 +104,6 @@ export default function Landing({ session }: LandingProps) {
             <a href="#how" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">How It Works</a>
             <a href="#code" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Code</a>
             <a href="#testimonials" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Devs</a>
-            <a href="/pricing" onClick={() => setIsMobileMenuOpen(false)} className="hover:text-lime-400 transition">Pricing</a>
             <div className="w-4/5 border-t border-neutral-800 my-4"></div>
             {session?.user ? (
               <a href="/dashboard" className="w-4/5 text-center px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold shadow">
@@ -163,13 +138,30 @@ export default function Landing({ session }: LandingProps) {
               Get Started Free <ArrowRightIcon className="h-5 w-5" />
             </a>
           )}
-          <a href="https://demo.whosviewing.me" target="_blank" rel="noopener" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-amber-400 text-amber-400 font-bold text-base hover:bg-amber-400 hover:text-[#18181b] transition flex items-center gap-2 justify-center">
+          {/* <a href="https://demo.whosviewing.me" target="_blank" rel="noopener" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-amber-400 text-amber-400 font-bold text-base hover:bg-amber-400 hover:text-[#18181b] transition flex items-center gap-2 justify-center">
             See Demo
-          </a>
+          </a> */}
         </motion.div>
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 0.7 }} className="text-xs text-lime-700 mt-2 font-mono">
           Trusted by solo devs, indie hackers, and tiny startups.
         </motion.div>
+      </section>
+
+            <section id="code" className="max-w-3xl mx-auto px-3 sm:px-6 py-12">
+        <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="text-xl sm:text-2xl font-bold text-center mb-6 text-green-400 font-mono">Add Analytics in 5 Seconds</motion.h2>
+        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="relative flex flex-col items-center justify-center">
+          <pre className="bg-[#18181b] text-green-400 font-mono rounded-xl p-5 text-base shadow-2xl border border-green-900 text-center w-full max-w-2xl mb-2 whitespace-pre-line">
+            <code className="select-all">{codeExample}</code>
+          </pre>
+          <button
+            onClick={() => {navigator.clipboard.writeText(codeExample)}}
+            className="absolute top-3 right-4 bg-lime-400 text-[#18181b] px-3 py-1 rounded font-bold text-xs shadow hover:bg-lime-300 transition focus:outline-none focus:ring-2 focus:ring-lime-400"
+            aria-label="Copy code"
+          >
+            Copy
+          </button>
+        </motion.div>
+        <div className="text-center text-neutral-500 mt-4 text-xs font-mono">No npm install. No build step. Just copy and go.</div>
       </section>
 
       {/* How It Works Section */}
@@ -216,41 +208,8 @@ export default function Landing({ session }: LandingProps) {
       </section>
 
       {/* Code Example Section */}
-      <section id="code" className="max-w-3xl mx-auto px-3 sm:px-6 py-12">
-        <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="text-xl sm:text-2xl font-bold text-center mb-6 text-green-400 font-mono">Add Analytics in 5 Seconds</motion.h2>
-        <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="bg-[#18181b] text-green-400 font-mono rounded-lg p-5 text-base shadow-lg border border-green-900 overflow-x-auto text-left">
-          <span className="select-all">{codeExample}</span>
-        </motion.div>
-        <div className="text-center text-neutral-500 mt-4 text-xs font-mono">No npm install. No build step. Just copy and go.</div>
-      </section>
 
-      {/* Testimonials Section */}
-      <section id="testimonials" className="max-w-5xl mx-auto px-3 sm:px-6 py-12">
-        <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="text-xl sm:text-2xl font-bold text-center mb-8 text-green-400 font-mono">What Devs Are Saying</motion.h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {testimonials.map((t, i) => (
-            <motion.a
-              key={i}
-              href={t.url}
-              target="_blank"
-              rel="noopener"
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1, duration: 0.6 }}
-              className="bg-[#23272e] rounded-lg p-4 flex flex-col items-center text-center shadow border border-neutral-800 hover:border-green-400 transition cursor-pointer group"
-            >
-              <div className="w-full h-32 bg-neutral-900 rounded mb-3 flex items-center justify-center overflow-hidden border border-neutral-800 group-hover:border-green-400 transition">
-                {/* Replace with real screenshots later */}
-                <span className="text-green-400 text-xs font-mono">[tweet screenshot here]</span>
-              </div>
-              <div className="font-mono text-xs text-green-400 mb-1">{t.user}</div>
-              <div className="text-neutral-300 text-xs font-mono mb-2">{t.text}</div>
-              <span className="text-xs text-green-400 group-hover:underline">View on Twitter →</span>
-            </motion.a>
-          ))}
-        </div>
-      </section>
+
 
       {/* Footer */}
       <footer className="border-t border-neutral-800 py-8 mt-12 text-xs font-mono">

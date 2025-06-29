@@ -22,7 +22,7 @@ const Auth = async () => {
             <Link href="/#features" className="hover:text-lime-400 transition px-2">Features</Link>
             <Link href="/#how" className="hover:text-lime-400 transition px-2">How It Works</Link>
             <Link href="/#code" className="hover:text-lime-400 transition px-2">Code</Link>
-            <Link href="/#testimonials" className="hover:text-lime-400 transition px-2">Devs</Link>
+            {/* <Link href="/#testimonials" className="hover:text-lime-400 transition px-2">Devs</Link> */}
             <Link href="/auth" className="hover:text-lime-400 transition flex items-center gap-2 px-3 py-1 border border-lime-400 rounded bg-[#18181b]">
               <ArrowRightEndOnRectangleIcon className="h-4 w-4" /> Login
             </Link>
