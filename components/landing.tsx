@@ -59,7 +59,7 @@ export default function Landing({ session }: LandingProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   return (
-    <div className="bg-[#18181b] text-neutral-100 min-h-screen font-mono">
+    <div className="bg-[#18181b] text-neutral-100 min-h-screen font-mono overflow-x-hidden">
       {/* Navbar */}
       <nav className="w-full border-b border-neutral-800 sticky top-0 z-30 bg-[#18181b]/90 backdrop-blur">
         <div className="max-w-6xl mx-auto px-4 sm:px-10 flex items-center justify-between h-14">
@@ -130,18 +130,27 @@ export default function Landing({ session }: LandingProps) {
         </motion.p>
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4, duration: 0.7 }} className="flex flex-col sm:flex-row gap-3 justify-center mb-6 w-full">
           {session?.user ? (
-            <a href="/dashboard" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition flex items-center gap-2 justify-center">
+            <a href="/dashboard" className="w-full h-12 sm:w-[250px] sm:h-[54px] flex items-center justify-center px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition gap-2">
               Go to Dashboard <ArrowRightIcon className="h-5 w-5" />
             </a>
           ) : (
-            <a href="/auth" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition flex items-center gap-2 justify-center">
+            <a href="/auth" className="w-full h-12 sm:w-[250px] sm:h-[54px] flex items-center justify-center px-6 py-3 rounded border-2 border-lime-400 bg-lime-400 text-[#18181b] font-bold text-base shadow hover:bg-[#18181b] hover:text-lime-400 transition gap-2">
               Get Started Free <ArrowRightIcon className="h-5 w-5" />
             </a>
           )}
-          {/* <a href="https://demo.whosviewing.me" target="_blank" rel="noopener" className="w-full sm:w-auto px-6 py-3 rounded border-2 border-amber-400 text-amber-400 font-bold text-base hover:bg-amber-400 hover:text-[#18181b] transition flex items-center gap-2 justify-center">
-            See Demo
-          </a> */}
+          <div className="w-full h-12 sm:w-[250px] sm:h-[54px] flex items-center justify-center mt-2 sm:mt-0 sm:ml-3">
+            <a href="https://www.producthunt.com/products/watch-dog?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-watch&#0045;dog" target="_blank" rel="noopener">
+              <img
+                src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=986120&theme=neutral&t=1751312317108"
+                alt="Watch Dog - Live visitor tracking, no cookies, 1-line setup | Product Hunt"
+                style={{ width: '200px', height: '44px', borderRadius: '8px' }}
+                width="200"
+                height="44"
+              />
+            </a>
+          </div>
         </motion.div>
+        
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6, duration: 0.7 }} className="text-xs text-lime-700 mt-2 font-mono">
           Trusted by solo devs, indie hackers, and tiny startups.
         </motion.div>
@@ -150,7 +159,7 @@ export default function Landing({ session }: LandingProps) {
             <section id="code" className="max-w-3xl mx-auto px-3 sm:px-6 py-12">
         <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="text-xl sm:text-2xl font-bold text-center mb-6 text-green-400 font-mono">Add Analytics in 5 Seconds</motion.h2>
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }} className="relative flex flex-col items-center justify-center">
-          <pre className="bg-[#18181b] text-green-400 font-mono rounded-xl p-5 text-base shadow-2xl border border-green-900 text-center w-full max-w-2xl mb-2 whitespace-pre-line">
+          <pre className="bg-[#18181b] text-green-400 font-mono rounded-xl p-5 text-base shadow-2xl border border-green-900 text-center w-full max-w-2xl mb-2 whitespace-pre-wrap overflow-x-auto break-words">
             <code className="select-all">{codeExample}</code>
           </pre>
           <button

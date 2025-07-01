@@ -2,7 +2,7 @@
 
 import { signOut } from 'next-auth/react'
 import { Session } from 'next-auth'
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { 
   ChartBarIcon, 
   EyeIcon, 
@@ -81,6 +81,10 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   const [isCopyingScript, setIsCopyingScript] = useState(false);
   
   const eventSourceRef = useRef<EventSource | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const [dataFetched, setDataFetched] = useState(false);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -98,28 +102,36 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
   }, [selectedProject]);
 
   const fetchStats = useCallback(async () => {
-    if (!selectedProject) return
-
+    if (!selectedProject) return;
+    setDataFetched(false);
     try {
       const [dailyRes, countriesRes, referrersRes] = await Promise.all([
         fetch(`/api/stats/project/${selectedProject.id}/7days`),
         fetch(`/api/stats/project/${selectedProject.id}/countries`),
         fetch(`/api/stats/project/${selectedProject.id}/referrers`)
-      ])
-
+      ]);
       const [dailyData, countriesData, referrersData] = await Promise.all([
         dailyRes.json(),
         countriesRes.json(),
         referrersRes.json()
-      ])
-
-      setDailyStats(dailyData)
-      setCountryStats(countriesData)
-      setReferrerStats(referrersData)
+      ]);
+      setDailyStats(dailyData);
+      setCountryStats(countriesData);
+      setReferrerStats(referrersData);
+      setDataFetched(true);
     } catch (error) {
-      console.error('Error fetching stats:', error)
+      console.error('Error fetching stats:', error);
+      setDataFetched(true); // allow UI to recover
     }
   }, [selectedProject]);
+
+  useEffect(() => {
+    if (dataFetched && realtimeConnected) {
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+  }, [dataFetched, realtimeConnected]);
 
   const setupRealtimeConnection = useCallback(() => {
     if (!selectedProject || eventSourceRef.current?.readyState === EventSource.OPEN) return;
@@ -204,6 +216,24 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
         }
     };
   }, [selectedProject, reconnectionAttempts, fetchStats, setupRealtimeConnection, reconnectionTimeout]);
+
+  useEffect(() => {
+    if (!dropdownOpen) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [dropdownOpen]);
+
+  const handleProjectSwitch = (project: Project) => {
+    setSelectedProject(project);
+    setDropdownOpen(false);
+    setLoading(true);
+    setDataFetched(false);
+  };
 
   const createProject = async () => {
     if (!newProjectName.trim()) return
@@ -304,20 +334,8 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
     }
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#18181b] text-neutral-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-400 mx-auto mb-4"></div>
-          <div className="text-lime-400 font-mono text-lg">Loading your dashboard...</div>
-          <div className="text-neutral-500 font-mono text-sm mt-2">Setting up real-time connections</div>
-        </div>
-      </div>
-    )
-  }
-
   // Show loading state when no projects exist yet
-  if (projects.length === 0) {
+  if (!loading && projects.length === 0) {
   return (
       <>
         <div className="min-h-screen bg-[#18181b] text-neutral-100 flex items-center justify-center">
@@ -468,20 +486,32 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
               >
                 <Bars3Icon className="h-6 w-6" />
               </button>
-              <select
-                value={selectedProject?.id || ''}
-                onChange={(e) => {
-                  const project = projects.find(p => p.id === e.target.value)
-                  setSelectedProject(project || null)
-                }}
-                className="bg-[#18181b] border border-neutral-700 rounded px-3 py-2 text-lime-400 font-mono cursor-pointer"
-              >
-                {projects.map(project => (
-                  <option key={project.id} value={project.id}>
-                    {project.name}
-                  </option>
-                ))}
-              </select>
+              <div className="relative min-w-[180px] w-56">
+                <button
+                  onClick={() => setDropdownOpen((open) => !open)}
+                  className="w-full flex items-center justify-between px-4 py-2 bg-[#18181b] border border-neutral-700 rounded text-lime-400 font-mono focus:outline-none focus:ring-2 focus:ring-lime-400"
+                >
+                  {selectedProject?.name || 'Select Project'}
+                  <svg className={`w-4 h-4 ml-2 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+                </button>
+                {dropdownOpen && (
+                  <div ref={dropdownRef} className="absolute z-50 mt-2 w-full bg-[#23272e] rounded-lg shadow-lg border border-neutral-800 overflow-hidden">
+                    <div className="px-4 py-2 text-xs text-neutral-400 font-mono">Personal account</div>
+                    {projects.map((project) => (
+                      <button
+                        key={project.id}
+                        onClick={() => handleProjectSwitch(project)}
+                        className={`w-full text-left px-4 py-2 font-mono text-sm flex items-center gap-2 transition-colors ${selectedProject?.id === project.id ? 'bg-neutral-800 text-lime-400' : 'text-neutral-200 hover:bg-neutral-700'}`}
+                      >
+                        {project.name}
+                        {selectedProject?.id === project.id && (
+                          <svg className="w-4 h-4 ml-auto text-lime-400" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <button
                 onClick={() => setShowNewProjectModal(true)}
                 className="flex items-center gap-2 px-3 py-2 bg-lime-400 text-[#18181b] rounded hover:bg-lime-300 transition font-mono text-sm cursor-pointer"
@@ -529,6 +559,13 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
 
         {/* Content Area */}
         <div className="flex-1 p-6 overflow-auto">
+          {loading && (
+            <div className="flex items-center gap-2 mb-4 p-3 bg-[#23272e] rounded-lg border border-neutral-800 w-fit mx-auto">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-lime-400"></div>
+              <span className="text-lime-400 font-mono text-sm">Fetching project data...</span>
+            </div>
+          )}
+
           {activeTab === 'overview' && (
             <div className="space-y-6">
               {/* Stats Cards */}
@@ -538,30 +575,54 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                     <EyeIcon className={`h-6 w-6 text-green-400 ${realtimeStats.count > 0 ? 'animate-pulse' : ''}`} />
                     <h3 className="text-green-400 font-semibold font-mono">Live Visitors</h3>
                   </div>
-                  <p className="text-3xl font-bold text-lime-400">{realtimeStats.count}</p>
+                  {loading ? (
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-lime-400"></div>
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold text-lime-400">{realtimeStats.count}</p>
+                  )}
                 </div>
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <div className="flex items-center gap-3 mb-2">
                     <ChartBarIcon className="h-6 w-6 text-cyan-400" />
                     <h3 className="text-cyan-400 font-semibold font-mono">7-Day Total</h3>
                   </div>
-                  <p className="text-3xl font-bold text-lime-400">
-                    {dailyStats.reduce((sum, day) => sum + day.visitors, 0)}
-                  </p>
+                  {loading ? (
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-lime-400"></div>
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold text-lime-400">
+                      {dailyStats.reduce((sum, day) => sum + day.visitors, 0)}
+                    </p>
+                  )}
                 </div>
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <div className="flex items-center gap-3 mb-2">
                     <GlobeAltIcon className="h-6 w-6 text-blue-400" />
                     <h3 className="text-blue-400 font-semibold font-mono">Countries</h3>
                   </div>
-                  <p className="text-3xl font-bold text-lime-400">{countryStats.length}</p>
+                  {loading ? (
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-lime-400"></div>
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold text-lime-400">{countryStats.length}</p>
+                  )}
                 </div>
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <div className="flex items-center gap-3 mb-2">
                     <LinkIcon className="h-6 w-6 text-purple-400" />
                     <h3 className="text-purple-400 font-semibold font-mono">Referrers</h3>
                   </div>
-                  <p className="text-3xl font-bold text-lime-400">{referrerStats.length}</p>
+                  {loading ? (
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-lime-400"></div>
+                    </div>
+                  ) : (
+                    <p className="text-3xl font-bold text-lime-400">{referrerStats.length}</p>
+                  )}
                 </div>
               </div>
 
@@ -571,27 +632,33 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <h3 className="text-green-400 font-semibold mb-4 font-mono">7-Day Traffic</h3>
                   <div className="space-y-2">
-                    {dailyStats.map((day) => {
-                      const maxViews = Math.max(...dailyStats.map(d => d.visitors), 1);
-                      const percentage = (day.visitors / maxViews) * 100;
+                    {loading ? (
+                      <div className="flex items-center justify-center min-h-[200px]">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-lime-400"></div>
+                      </div>
+                    ) : (
+                      dailyStats.map((day) => {
+                        const maxViews = Math.max(...dailyStats.map(d => d.visitors), 1);
+                        const percentage = (day.visitors / maxViews) * 100;
 
-                      return (
-                        <div key={day.date} className="flex items-center gap-3">
-                          <span className="text-xs text-neutral-400 font-mono w-16">
-                            {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                          <div className="flex-1 bg-neutral-800 rounded-full h-2 overflow-hidden">
-                            <div 
-                              className="bg-lime-400 h-2 rounded-full transition-all"
-                              style={{ width: `${percentage}%` }}
-                            />
+                        return (
+                          <div key={day.date} className="flex items-center gap-3">
+                            <span className="text-xs text-neutral-400 font-mono w-16">
+                              {new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                            <div className="flex-1 bg-neutral-800 rounded-full h-2 overflow-hidden">
+                              <div 
+                                className="bg-lime-400 h-2 rounded-full transition-all"
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                            <span className="text-xs text-lime-400 font-mono w-8 text-right">
+                              {day.visitors}
+                            </span>
                           </div>
-                          <span className="text-xs text-lime-400 font-mono w-8 text-right">
-                            {day.visitors}
-                          </span>
-                        </div>
-                      )
-                    })}
+                        )
+                      })
+                    )}
                   </div>
                 </div>
 
@@ -599,22 +666,28 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
                 <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                   <h3 className="text-green-400 font-semibold mb-4 font-mono">Top Countries</h3>
                   <div className="space-y-2">
-                    {countryStats.slice(0, 5).map((country) => (
-                      <div key={country.country} className="flex items-center gap-3">
-                        <span className="text-xs text-neutral-400 font-mono flex-1">
-                          {country.country}
-                        </span>
-                        <div className="flex-1 bg-neutral-800 rounded-full h-2">
-                          <div 
-                            className="bg-blue-400 h-2 rounded-full transition-all"
-                            style={{ width: `${(country.visitors / Math.max(...countryStats.map(c => c.visitors))) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-blue-400 font-mono w-8 text-right">
-                          {country.visitors}
-                        </span>
+                    {loading ? (
+                      <div className="flex items-center justify-center min-h-[200px]">
+                        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-lime-400"></div>
                       </div>
-                    ))}
+                    ) : (
+                      countryStats.slice(0, 5).map((country) => (
+                        <div key={country.country} className="flex items-center gap-3">
+                          <span className="text-xs text-neutral-400 font-mono flex-1">
+                            {country.country}
+                          </span>
+                          <div className="flex-1 bg-neutral-800 rounded-full h-2">
+                            <div 
+                              className="bg-blue-400 h-2 rounded-full transition-all"
+                              style={{ width: `${(country.visitors / Math.max(...countryStats.map(c => c.visitors))) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-blue-400 font-mono w-8 text-right">
+                            {country.visitors}
+                          </span>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
               </div>
@@ -623,12 +696,18 @@ const DashboardClient = ({ session }: DashboardClientProps) => {
               <div className="bg-[#23272e] p-6 rounded-lg border border-neutral-800">
                 <h3 className="text-green-400 font-semibold mb-4 font-mono">Top Referrers</h3>
                 <div className="space-y-2">
-                  {referrerStats.slice(0, 10).map((referrer) => (
-                    <div key={referrer.referrer} className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-b-0">
-                      <span className="text-sm text-neutral-300 font-mono">{referrer.referrer}</span>
-                      <span className="text-sm text-purple-400 font-mono">{referrer.visitors} visitors</span>
+                  {loading ? (
+                    <div className="flex items-center justify-center min-h-[200px]">
+                      <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-lime-400"></div>
                     </div>
-                  ))}
+                  ) : (
+                    referrerStats.slice(0, 10).map((referrer) => (
+                      <div key={referrer.referrer} className="flex items-center justify-between py-2 border-b border-neutral-800 last:border-b-0">
+                        <span className="text-sm text-neutral-300 font-mono">{referrer.referrer}</span>
+                        <span className="text-sm text-purple-400 font-mono">{referrer.visitors} visitors</span>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>
